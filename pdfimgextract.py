@@ -20,9 +20,9 @@ class Parser(argparse.ArgumentParser):
 def get_args():
     parser = Parser(
         description="Inline python script to extract images from PDF files",
-        epilog=f"{GREEN}Usage example:\n"
-               f"  pdfimgextract input.pdf output_folder 4\n"
-               f"  pdfimgextract -i file.pdf -o output_folder -p 4{ENDC}",
+        epilog="Usage example:\n"
+               "  pdfimgextract input.pdf output_folder 4\n"
+               "  pdfimgextract -i file.pdf -o output_folder -p 4",
         formatter_class=argparse.RawTextHelpFormatter
     )
 
