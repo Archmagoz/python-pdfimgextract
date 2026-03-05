@@ -1,4 +1,5 @@
 from concurrent.futures import ProcessPoolExecutor
+from tqdm import tqdm
 import argparse
 import fitz
 import sys
@@ -6,8 +7,8 @@ import os
 
 # Terminal color codes
 GREEN = '\033[92m'
-RED = '\033[91m'
-ENDC = '\033[0m'
+RED   = '\033[91m'
+ENDC  = '\033[0m'
 
 # Custom ArgumentParser
 class Parser(argparse.ArgumentParser):
@@ -54,8 +55,8 @@ def get_args():
     args = parser.parse_args()
 
     # Resolve priority: flag > positional
-    args.input = args.input or args.input_pos
-    args.output = args.output or args.output_pos
+    args.input       = args.input or args.input_pos
+    args.output      = args.output or args.output_pos
     args.parallelism = args.parallelism or args.parallelism_pos or 4
 
     # Validation
@@ -79,7 +80,7 @@ def worker_extract(task):
         base_image = pdf.extract_image(xref)
 
     image_bytes = base_image["image"]
-    ext = base_image["ext"]
+    ext         = base_image["ext"]
 
     path = os.path.join(out_dir, f"{filename}.{ext}")
 
@@ -100,14 +101,19 @@ def extract_images_parallel(pdf_path, out_dir, workers):
             for img in page.get_images(full=True):
                 tasks.append((pdf_path, img[0], out_dir, None))
 
-    total = len(tasks)
+    total  = len(tasks)
     digits = len(str(total))
 
     for i, t in enumerate(tasks, start=1):
         tasks[i - 1] = (t[0], t[1], t[2], str(i).zfill(digits))
 
     with ProcessPoolExecutor(max_workers=workers) as exe:
-        results = list(exe.map(worker_extract, tasks))
+        results = list(tqdm(
+            exe.map(worker_extract, tasks),
+            total=len(tasks),
+            desc="Extracting images",
+            colour="green"
+        ))
 
     print(f"{GREEN}{len(results)} imagens extraídas para {out_dir}{ENDC}")
 
