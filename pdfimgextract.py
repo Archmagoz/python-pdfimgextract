@@ -90,16 +90,24 @@ def worker_extract(task):
     return path
 
 
-# Main extractor
+# task manager
 def extract_images_parallel(pdf_path, out_dir, workers):
     os.makedirs(out_dir, exist_ok=True)
 
     tasks = []
 
     with fitz.open(pdf_path) as pdf:
+        seen = set()
+
         for page in pdf:
             for img in page.get_images(full=True):
-                tasks.append((pdf_path, img[0], out_dir, None))
+                xref = img[0]
+
+                if xref in seen:
+                    continue
+
+                seen.add(xref)
+                tasks.append((pdf_path, xref, out_dir, None))
 
     total  = len(tasks)
     digits = len(str(total))
