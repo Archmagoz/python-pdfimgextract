@@ -5,7 +5,7 @@ from multiprocessing.pool import Pool
 from dataclasses import dataclass
 from colorama import Fore, Style, init as colorama_init
 from tqdm import tqdm
-from typing import Iterable, Protocol
+from typing import Protocol
 from contextlib import suppress
 
 import argparse
