@@ -157,27 +157,9 @@ def remove_file_safely(path: str | None) -> None:
         os.remove(path)
 
 
-def is_process_alive(pid: int) -> bool:
-    if pid <= 0:
-        return False
-
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    else:
-        return True
-
-
 # ============================================================
 # Temporary file cleanup
 # ============================================================
-
-
-def is_temp_file_name(name: str) -> bool:
-    return name.startswith(".pdfimgextract-tmp-") and name.endswith(".part")
 
 
 def cleanup_stale_temp_files(out_dir: str) -> None:
@@ -185,7 +167,7 @@ def cleanup_stale_temp_files(out_dir: str) -> None:
         return
 
     for name in os.listdir(out_dir):
-        if is_temp_file_name(name):
+        if name.startswith(".pdfimgextract-tmp-") and name.endswith(".part"):
             remove_file_safely(os.path.join(out_dir, name))
 
 
@@ -505,7 +487,7 @@ def extract_images_parallel(pdf_path: str, out_dir: str, workers: int) -> int:
                         error="cancelled",
                     )
                 else:
-                    result, _final_path = finalize_result(
+                    result, _ = finalize_result(
                         raw_result,
                         out_dir=out_dir,
                     )
