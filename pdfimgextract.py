@@ -324,10 +324,6 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
         return failure_result(task, str(e))
 
 
-def iter_results(pool: Pool, tasks: list[ExtractTask]) -> Iterable[ExtractResult]:
-    yield from pool.imap_unordered(worker_extract, tasks, chunksize=1)
-
-
 # ============================================================
 # Progress bar
 # ============================================================
@@ -472,7 +468,7 @@ def extract_images_parallel(pdf_path: str, out_dir: str, workers: int) -> int:
                 initargs=(pdf_path, stop_event),
             )
 
-            for raw_result in iter_results(pool, tasks):
+            for raw_result in pool.imap_unordered(worker_extract, tasks, chunksize=1):
                 if stop_event.is_set():
                     if raw_result.temp_path is not None:
                         remove_file_safely(raw_result.temp_path)
