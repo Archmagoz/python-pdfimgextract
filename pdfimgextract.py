@@ -76,7 +76,7 @@ class ExtractResult:
 
 
 # ============================================================
-# Custom parser
+# Custom parser error handling
 # ============================================================
 
 
@@ -87,7 +87,7 @@ class Parser(argparse.ArgumentParser):
 
 
 # ============================================================
-# Argument helpers
+# Argument handler
 # ============================================================
 
 
@@ -141,12 +141,9 @@ def get_args() -> argparse.Namespace:
     return args
 
 
-def ext_fix(ext: str) -> str:
-    match ext.lower():
-        case "jpx" | "jpeg" | "jpeg2000":
-            return "jpg"
-        case _:
-            return ext.lower()
+# ============================================================
+# Temporary file cleanup
+# ============================================================
 
 
 def remove_file_safely(path: str | None) -> None:
@@ -155,11 +152,6 @@ def remove_file_safely(path: str | None) -> None:
 
     with suppress(OSError):
         os.remove(path)
-
-
-# ============================================================
-# Temporary file cleanup
-# ============================================================
 
 
 def cleanup_stale_temp_files(out_dir: str) -> None:
@@ -292,7 +284,7 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
         if not raw_ext:
             raise RuntimeError("PDF image extraction returned empty file extension.")
 
-        ext = ext_fix(raw_ext)
+        ext = raw_ext.lower()
 
         if STOP_EVENT.is_set():
             return cancelled_result(task)
