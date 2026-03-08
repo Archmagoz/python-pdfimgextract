@@ -85,11 +85,20 @@ class Parser(argparse.ArgumentParser):
 def get_args() -> argparse.Namespace:
     parser = Parser(
         formatter_class=argparse.RawTextHelpFormatter,
-        description="Extract unique images from a PDF file",
+        description=(
+            "Extract images from a PDF file quickly and efficiently.\n"
+            "Images are extracted in parallel and saved with atomic writes\n"
+            "to ensure safe and reliable output even if interrupted."
+        ),
         epilog=(
-            "Usage examples:\n"
-            "  pdfimgextract input.pdf output_folder 4\n"
-            "  pdfimgextract -i file.pdf -o output_folder -p 4\n"
+            "Examples:\n"
+            "  pdfimgextract input.pdf images\n"
+            "  pdfimgextract input.pdf images 8\n"
+            "  pdfimgextract -i input.pdf -o images -p 8\n\n"
+            "Notes:\n"
+            "  - Duplicate images in the PDF are automatically skipped.\n"
+            "  - Extraction runs in parallel for maximum performance.\n"
+            "  - Default parallelism: 8 processes."
         ),
     )
 
