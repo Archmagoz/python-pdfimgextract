@@ -105,14 +105,14 @@ def get_args() -> argparse.Namespace:
         "-p",
         "--parallelism",
         type=int,
-        help="parallelism level (default: 4 workers)",
+        help="parallelism level (default: 8 workers)",
     )
 
     args = parser.parse_args()
 
     args.input = args.input or args.input_pos
     args.output = args.output or args.output_pos
-    args.parallelism = args.parallelism or args.parallelism_pos or 4
+    args.parallelism = args.parallelism or args.parallelism_pos or 8
 
     if not args.input:
         parser.error("Input PDF not specified.")
@@ -451,7 +451,7 @@ def extract_images_parallel(pdf_path: str, out_dir: str, workers: int) -> int:
                 initargs=(pdf_path, stop_event),
             )
 
-            chunksize = max(1, total // (workers * 4))
+            chunksize = max(1, total // (workers * 8))
 
             for raw_result in pool.imap_unordered(
                 worker_extract, tasks, chunksize=chunksize
