@@ -12,13 +12,18 @@ A fast parallel PDF image extractor written in Python.
 - safe interruption handling
 
 ## Installation
-git clone thi repo
+
+```bash
+git clone this repo
 cd python-pdfimgextract
 pip install .
+```
 
 ## Usage
 
+```bash
 pdfimgextract [INPUT_PDF] [OUTPUT_DIR] [NUMBER_OF_PROCESSES]
+```
 
 Or use the optional flags:
 
