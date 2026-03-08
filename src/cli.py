@@ -582,7 +582,3 @@ def main() -> int:
         out_dir=args.output,
         workers=args.parallelism,
     )
-
-
-if __name__ == "__main__":
-    sys.exit(main())

@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pdfimgextract"
+version = "1.0.0"
+description = "Fast parallel PDF image extractor"
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+    "pymupdf",
+    "tqdm",
+    "colorama"
+]
+
+[project.scripts]
+pdfimgextract = "pdfimgextract.cli:main"
