@@ -72,7 +72,7 @@ class ExtractResult:
 
 
 # ============================================================
-# Custom parser error handling
+# Argument parsing and validation + custom error reporting
 # ============================================================
 
 
