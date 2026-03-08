@@ -38,18 +38,14 @@ EXIT_BY_USER = 2
 # Worker global state
 # ============================================================
 
-PDF_DOC: fitz.Document | None = None
-STOP_EVENT: "SharedEventProtocol | None" = None
-
-# ============================================================
-# Protocol for shared event
-# ============================================================
-
 
 class SharedEventProtocol(Protocol):
     def is_set(self) -> bool: ...
     def set(self) -> None: ...
 
+
+PDF_DOC: fitz.Document | None = None
+STOP_EVENT: SharedEventProtocol | None = None
 
 # ============================================================
 # Data models
@@ -84,11 +80,6 @@ class Parser(argparse.ArgumentParser):
     def error(self, message: str):
         sys.stderr.write(f"{RED}Error: {message}{ENDC}\n\n")
         sys.exit(EXIT_FAILURE)
-
-
-# ============================================================
-# Argument handler
-# ============================================================
 
 
 def get_args() -> argparse.Namespace:
@@ -460,7 +451,11 @@ def extract_images_parallel(pdf_path: str, out_dir: str, workers: int) -> int:
                 initargs=(pdf_path, stop_event),
             )
 
-            for raw_result in pool.imap_unordered(worker_extract, tasks, chunksize=1):
+            chunksize = max(1, total // (workers * 4))
+
+            for raw_result in pool.imap_unordered(
+                worker_extract, tasks, chunksize=chunksize
+            ):
                 if stop_event.is_set():
                     if raw_result.temp_path is not None:
                         remove_file_safely(raw_result.temp_path)
