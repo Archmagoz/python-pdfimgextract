@@ -32,7 +32,7 @@ ENDC = Style.RESET_ALL
 
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
-EXIT_BY_USER = 2
+EXIT_BY_USER = 130
 
 # ============================================================
 # Worker global state
