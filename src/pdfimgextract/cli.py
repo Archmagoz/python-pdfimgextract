@@ -121,7 +121,11 @@ def get_args() -> argparse.Namespace:
 
     args.input = args.input or args.input_pos
     args.output = args.output or args.output_pos
-    args.parallelism = args.parallelism or args.parallelism_pos or 8
+    args.parallelism = (
+        args.parallelism
+        if args.parallelism is not None
+        else args.parallelism_pos if args.parallelism_pos is not None else 8
+    )
 
     if not args.input:
         parser.error("Input PDF not specified.")
