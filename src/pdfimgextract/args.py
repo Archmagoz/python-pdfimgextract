@@ -3,14 +3,15 @@ import os
 
 import sys
 
-from pdfimgextract.cli import RED, ENDC
-from .cli import EXIT_FAILURE
+from .colors import RED, ENDC
+
+EXIT_BY_INCORRECT_USAGE = 2
 
 
 class Parser(argparse.ArgumentParser):
     def error(self, message: str):
         sys.stderr.write(f"{RED}Error: {message}{ENDC}\n\n")
-        sys.exit(EXIT_FAILURE)
+        sys.exit(EXIT_BY_INCORRECT_USAGE)
 
 
 def get_args() -> argparse.Namespace:
@@ -50,7 +51,6 @@ def get_args() -> argparse.Namespace:
 
     args = parser.parse_args()
 
-    # Validate and normalize arguments, giving precedence to explicit flags over positional ones
     args.input = args.input or args.input_pos
     args.output = args.output or args.output_pos
     args.parallelism = (
