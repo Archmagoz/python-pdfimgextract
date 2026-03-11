@@ -2,171 +2,25 @@ from __future__ import annotations
 
 from multiprocessing import Event
 from multiprocessing.pool import Pool
-from dataclasses import dataclass
-from colorama import Fore, Style, init as colorama_init
+from colorama import init as colorama_init
 from tqdm import tqdm
-from typing import Protocol
 from contextlib import suppress
 
-import argparse
-import atexit
 import os
-import signal
 import sys
 import uuid
 
 import fitz
 
-# ============================================================
-# Terminal colors
-# ============================================================
+from pdfimgextract.cli import GREEN, YELLOW, RED, ENDC
+from .cleanup import cleanup_stale_temp_files, remove_file_safely
+from .args import get_args
+from .worker import init_worker, worker_extract, ExtractTask, ExtractResult
 
-YELLOW = Fore.YELLOW
-GREEN = Fore.GREEN
-RED = Fore.RED
-ENDC = Style.RESET_ALL
-
-# ============================================================
 # Standardized exit codes
-# ============================================================
-
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
 EXIT_BY_USER = 130
-
-# ============================================================
-# Worker global state
-# ============================================================
-
-
-class SharedEventProtocol(Protocol):
-    def is_set(self) -> bool: ...
-    def set(self) -> None: ...
-
-
-PDF_DOC: fitz.Document | None = None
-STOP_EVENT: SharedEventProtocol | None = None
-
-# ============================================================
-# Data models
-# ============================================================
-
-
-@dataclass(frozen=True)
-class ExtractTask:
-    xref: int
-    stem: str
-    out_dir: str
-    run_id: str
-
-
-@dataclass(frozen=True)
-class ExtractResult:
-    ok: bool
-    cancelled: bool
-    xref: int
-    stem: str
-    ext: str | None
-    temp_path: str | None
-    error: str | None
-
-
-# ============================================================
-# Argument parsing and validation + custom error reporting
-# ============================================================
-
-
-class Parser(argparse.ArgumentParser):
-    def error(self, message: str):
-        sys.stderr.write(f"{RED}Error: {message}{ENDC}\n\n")
-        sys.exit(EXIT_FAILURE)
-
-
-def get_args() -> argparse.Namespace:
-    parser = Parser(
-        formatter_class=argparse.RawTextHelpFormatter,
-        description=(
-            "Extract images from a PDF file quickly and efficiently.\n"
-            "Images are extracted in parallel and saved with atomic writes\n"
-            "to ensure safe and reliable output even if interrupted."
-        ),
-        epilog=(
-            "Examples:\n"
-            "  pdfimgextract input.pdf images\n"
-            "  pdfimgextract input.pdf images 8\n"
-            "  pdfimgextract -i input.pdf -o images -p 8\n\n"
-            "Notes:\n"
-            "  - Duplicate images in the PDF are automatically skipped.\n"
-            "  - Extraction runs in parallel for maximum performance.\n"
-            "  - Default parallelism: 8 processes."
-        ),
-    )
-
-    parser.add_argument("input_pos", nargs="?", help="input PDF file")
-    parser.add_argument("output_pos", nargs="?", help="output folder")
-    parser.add_argument(
-        "parallelism_pos", nargs="?", type=int, help="parallelism level"
-    )
-
-    parser.add_argument("-i", "--input", help="input PDF file")
-    parser.add_argument("-o", "--output", help="output folder")
-    parser.add_argument(
-        "-p",
-        "--parallelism",
-        type=int,
-        help="parallelism level (default: 8 workers)",
-    )
-
-    args = parser.parse_args()
-
-    # Validate and normalize arguments, giving precedence to explicit flags over positional ones
-    args.input = args.input or args.input_pos
-    args.output = args.output or args.output_pos
-    args.parallelism = (
-        args.parallelism
-        if args.parallelism is not None
-        else args.parallelism_pos if args.parallelism_pos is not None else 8
-    )
-
-    if not args.input:
-        parser.error("Input PDF not specified.")
-
-    if not os.path.isfile(args.input):
-        parser.error(f"Input file '{args.input}' does not exist or is not a file.")
-
-    if not args.output:
-        parser.error("Output folder not specified.")
-
-    if os.path.exists(args.output) and not os.path.isdir(args.output):
-        parser.error(f"Output path '{args.output}' exists and is not a directory.")
-
-    if args.parallelism < 1:
-        parser.error("Parallelism level should be >= 1")
-
-    return args
-
-
-# ============================================================
-# Temporary file cleanup
-# ============================================================
-
-
-def remove_file_safely(path: str | None) -> None:
-    if not path:
-        return
-
-    with suppress(OSError):
-        os.remove(path)
-
-
-def cleanup_stale_temp_files(out_dir: str) -> None:
-    if not os.path.isdir(out_dir):
-        return
-
-    for name in os.listdir(out_dir):
-        if name.startswith(".pdfimgextract-tmp-") and name.endswith(".part"):
-            remove_file_safely(os.path.join(out_dir, name))
-
 
 # ============================================================
 # Image discovery
@@ -203,122 +57,6 @@ def build_tasks(pdf_path: str, out_dir: str, run_id: str) -> list[ExtractTask]:
         )
 
     return tasks
-
-
-# ============================================================
-# Worker lifecycle
-# ============================================================
-
-
-def close_worker_pdf() -> None:
-    global PDF_DOC
-    if PDF_DOC is not None:
-        with suppress(Exception):
-            PDF_DOC.close()
-        PDF_DOC = None
-
-
-def init_worker(pdf_path: str, stop_event: SharedEventProtocol) -> None:
-    global PDF_DOC, STOP_EVENT
-
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-    PDF_DOC = fitz.open(pdf_path)
-    STOP_EVENT = stop_event
-
-    atexit.register(close_worker_pdf)
-
-
-# ============================================================
-# Result helpers
-# ============================================================
-
-
-def cancelled_result(task: ExtractTask) -> ExtractResult:
-    return ExtractResult(
-        ok=False,
-        cancelled=True,
-        xref=task.xref,
-        stem=task.stem,
-        ext=None,
-        temp_path=None,
-        error="cancelled",
-    )
-
-
-def failure_result(task: ExtractTask, error: str) -> ExtractResult:
-    return ExtractResult(
-        ok=False,
-        cancelled=False,
-        xref=task.xref,
-        stem=task.stem,
-        ext=None,
-        temp_path=None,
-        error=error,
-    )
-
-
-# ============================================================
-# Worker extraction
-# ============================================================
-
-
-def worker_extract(task: ExtractTask) -> ExtractResult:
-    global PDF_DOC, STOP_EVENT
-
-    temp_path: str | None = None
-
-    try:
-        if STOP_EVENT is None:
-            raise RuntimeError("Worker stop event is not initialized.")
-
-        if STOP_EVENT.is_set():
-            return cancelled_result(task)
-
-        if PDF_DOC is None:
-            raise RuntimeError("Worker PDF document is not initialized.")
-
-        base_image = PDF_DOC.extract_image(task.xref)
-
-        image_bytes = base_image.get("image")
-        raw_ext = str(base_image.get("ext", "")).strip()
-
-        if not image_bytes:
-            raise RuntimeError("PDF image extraction returned empty image data.")
-
-        if not raw_ext:
-            raise RuntimeError("PDF image extraction returned empty file extension.")
-
-        ext = raw_ext.lower()
-
-        if STOP_EVENT.is_set():
-            return cancelled_result(task)
-
-        temp_path = os.path.join(
-            task.out_dir,
-            f".pdfimgextract-tmp-{task.run_id}-{task.stem}.{ext}.part",
-        )
-
-        with open(temp_path, "wb") as f:
-            f.write(image_bytes)
-
-        if STOP_EVENT.is_set():
-            remove_file_safely(temp_path)
-            return cancelled_result(task)
-
-        return ExtractResult(
-            ok=True,
-            cancelled=False,
-            xref=task.xref,
-            stem=task.stem,
-            ext=ext,
-            temp_path=temp_path,
-            error=None,
-        )
-
-    except Exception as e:
-        remove_file_safely(temp_path)
-        return failure_result(task, str(e))
 
 
 # ============================================================
