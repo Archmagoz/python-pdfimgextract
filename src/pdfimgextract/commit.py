@@ -2,6 +2,7 @@ import os
 
 from .datamodels import ExtractResult
 from .cleanup import remove_file_safely
+from .utils import fix_ext
 
 
 def finalize_result(
@@ -40,7 +41,7 @@ def finalize_result(
             None,
         )
 
-    final_path = os.path.join(out_dir, f"{result.stem}.{result.ext}")
+    final_path = os.path.join(out_dir, f"{result.stem}.{fix_ext(result.ext)}")
 
     try:
         os.replace(result.temp_path, final_path)

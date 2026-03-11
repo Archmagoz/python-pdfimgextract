@@ -9,18 +9,15 @@ import os
 import sys
 import uuid
 
-from .colors import GREEN, YELLOW, RED, ENDC
 from .cleanup import cleanup_stale_temp_files, remove_file_safely
 from .worker import init_worker, worker_extract, ExtractResult
 from .progress_bar import create_progress_bar, finish_progress_bar
 from .commit import finalize_result
 from .build_tasks import build_tasks
+from .summary import print_summary
 
-
-# Standard exit codes:
-EXIT_SUCCESS = 0
-EXIT_FAILURE = 1
-EXIT_BY_USER = 130
+from pdfimgextract.exit_codes import EXIT_SUCCESS, EXIT_FAILURE
+from pdfimgextract.colors import RED, YELLOW, ENDC
 
 
 # Guarantee cleanup of worker resources on interrupt (e.g. CTRL-C)
@@ -103,34 +100,6 @@ def run_pool(tasks, workers, pdf_path, stop_event, progress, out_dir):
     return results, failed, success_count, interrupted
 
 
-def print_summary(
-    success_count, fail_count, failed, interrupted, results, total, out_dir
-):
-    if interrupted:
-        remaining = total - len(results)
-
-        print(f"{YELLOW}{success_count} images extracted before interruption{ENDC}")
-
-        if fail_count > 0:
-            print(f"{YELLOW}{fail_count} images failed to extract{ENDC}")
-            for r in failed:
-                print(f"{YELLOW}- image #{r.stem} (xref={r.xref}): {r.error}{ENDC}")
-
-        print(f"{YELLOW}{remaining} images were not processed{ENDC}")
-        print(f"{YELLOW}Interrupted by user (CTRL-C){ENDC}")
-        return EXIT_BY_USER
-
-    print(f"{GREEN}{success_count} images successfully extracted to {out_dir}{ENDC}")
-
-    if fail_count > 0:
-        print(f"{YELLOW}{fail_count} images failed to extract{ENDC}")
-        for r in failed:
-            print(f"{YELLOW}- image #{r.stem} (xref={r.xref}): {r.error}{ENDC}")
-        return EXIT_FAILURE
-
-    return EXIT_SUCCESS
-
-
 def extract_images_parallel(pdf_path: str, out_dir: str, workers: int) -> int:
     os.makedirs(out_dir, exist_ok=True)
 
@@ -184,7 +153,3 @@ def extract_images_parallel(pdf_path: str, out_dir: str, workers: int) -> int:
 
         print(f"{RED}Fatal error: {e}{ENDC}", file=sys.stderr)
         return EXIT_FAILURE
-
-    finally:
-        if progress is not None:
-            finish_progress_bar(progress, interrupted)

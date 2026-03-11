@@ -5,7 +5,7 @@ import sys
 
 from .colors import RED, ENDC
 
-EXIT_BY_INCORRECT_USAGE = 2
+from pdfimgextract.exit_codes import EXIT_BY_INCORRECT_USAGE
 
 
 class Parser(argparse.ArgumentParser):
