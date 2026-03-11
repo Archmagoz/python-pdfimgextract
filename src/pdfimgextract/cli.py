@@ -119,6 +119,7 @@ def get_args() -> argparse.Namespace:
 
     args = parser.parse_args()
 
+    # Validate and normalize arguments, giving precedence to explicit flags over positional ones
     args.input = args.input or args.input_pos
     args.output = args.output or args.output_pos
     args.parallelism = (
@@ -464,11 +465,11 @@ def extract_images_parallel(pdf_path: str, out_dir: str, workers: int) -> int:
                 initargs=(pdf_path, stop_event),
             )
 
-            chunksize = max(1, total // (workers * 8))
-
-            for raw_result in pool.imap_unordered(
-                worker_extract, tasks, chunksize=chunksize
-            ):
+            # Each worker will work with one image at a time to better reporting of progress and
+            # faster cancellation response, at the cost of some parallelism efficiency.
+            # This is a deliberate choice to prioritize user experience and responsiveness,
+            # especially for large PDFs with many images or big images, so keep chunksize=1.
+            for raw_result in pool.imap_unordered(worker_extract, tasks, chunksize=1):
                 if stop_event.is_set():
                     if raw_result.temp_path is not None:
                         remove_file_safely(raw_result.temp_path)
