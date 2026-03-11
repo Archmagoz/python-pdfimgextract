@@ -98,9 +98,9 @@ def run_pool(tasks, workers, pdf_path, stop_event, progress, out_dir):
     return results, failed, success_count, interrupted
 
 
-def print_summary(success_count, failed, interrupted, results, total, out_dir):
-    fail_count = len(failed)
-
+def print_summary(
+    success_count, fail_count, failed, interrupted, results, total, out_dir
+):
     if interrupted:
         remaining = total - len(results)
 
@@ -156,10 +156,13 @@ def extract_images_parallel(pdf_path: str, out_dir: str, workers: int) -> int:
             out_dir,
         )
 
+        finish_progress_bar(progress, interrupted)
+
         cleanup_stale_temp_files(out_dir)
 
         return print_summary(
             success_count,
+            len(failed),
             failed,
             interrupted,
             results,
