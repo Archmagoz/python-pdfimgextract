@@ -17,11 +17,13 @@ from .commit import finalize_result
 from .build_tasks import build_tasks
 
 
+# Standard exit codes:
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
 EXIT_BY_USER = 130
 
 
+# Guarantee cleanup of worker resources on interrupt (e.g. CTRL-C)
 def handle_interrupt(pool, progress, stop_event):
     stop_event.set()
 
@@ -50,6 +52,9 @@ def run_pool(tasks, workers, pdf_path, stop_event, progress, out_dir):
             initargs=(pdf_path, stop_event),
         )
 
+        # Chunksize of 1 to get results as soon as each task is done, which
+        # allows better progress tracking and faster interruption response.
+        # The overhead of more frequent inter-process communication is negligible.
         for raw_result in pool.imap_unordered(worker_extract, tasks, chunksize=1):
             if stop_event.is_set():
                 if raw_result.temp_path is not None:
