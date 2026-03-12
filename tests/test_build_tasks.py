@@ -4,7 +4,6 @@ from pdfimgextract.datamodels import ExtractTask
 
 
 class DummyImage(tuple):
-    # fitz returns tuples, xref é o primeiro elemento
     def __new__(cls, xref):
         return tuple.__new__(cls, (xref,))
 
@@ -33,9 +32,8 @@ class DummyPDF:
 
 @patch("pdfimgextract.build_tasks.fitz.open")
 def test_build_tasks_with_images(mock_open):
-    # mock PDF com 2 páginas, imagens duplicadas
     page1 = DummyPage([DummyImage(1), DummyImage(2)])
-    page2 = DummyPage([DummyImage(2), DummyImage(3)])  # xref 2 duplicado
+    page2 = DummyPage([DummyImage(2), DummyImage(3)])
     mock_open.return_value = DummyPDF([page1, page2])
 
     out_dir = "out"
@@ -43,15 +41,12 @@ def test_build_tasks_with_images(mock_open):
 
     tasks = build_tasks("dummy.pdf", out_dir, run_id)
 
-    # xrefs únicos
     xrefs = [t.xref for t in tasks]
     assert xrefs == [1, 2, 3]
 
-    # stubs zerofilled
     stems = [t.stem for t in tasks]
-    assert stems == ["1", "2", "3"]  # digits=1, no zfill needed
+    assert stems == ["1", "2", "3"]
 
-    # verificar out_dir e run_id
     for t in tasks:
         assert t.out_dir == out_dir
         assert t.run_id == run_id
@@ -60,7 +55,6 @@ def test_build_tasks_with_images(mock_open):
 
 @patch("pdfimgextract.build_tasks.fitz.open")
 def test_build_tasks_no_images(mock_open):
-    # PDF sem imagens
     page = DummyPage([])
     mock_open.return_value = DummyPDF([page])
 
@@ -71,7 +65,6 @@ def test_build_tasks_no_images(mock_open):
 
 @patch("pdfimgextract.build_tasks.fitz.open")
 def test_build_tasks_zfill(mock_open):
-    # PDF com 12 imagens -> digits=2
     images = [DummyImage(i) for i in range(1, 13)]
     page = DummyPage(images)
     mock_open.return_value = DummyPDF([page])

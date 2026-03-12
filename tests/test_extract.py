@@ -1,3 +1,4 @@
+import pytest
 from unittest.mock import Mock
 
 from pdfimgextract.extract import (
@@ -5,7 +6,6 @@ from pdfimgextract.extract import (
     run_pool,
     extract_images_parallel,
 )
-
 from pdfimgextract.worker import ExtractResult
 from pdfimgextract.exit_codes import EXIT_SUCCESS, EXIT_FAILURE
 
@@ -57,14 +57,14 @@ class DummyPool:
         self.terminated = True
 
 
-def make_raw(ok=True):
+def make_raw(ok=True, temp_path=None):
     return ExtractResult(
         ok=ok,
         cancelled=False,
         xref=1,
         stem="img",
         ext="png",
-        temp_path=None,
+        temp_path=temp_path,
         error=None,
     )
 
@@ -80,6 +80,7 @@ def test_handle_interrupt():
     pool.terminate.assert_called()
     pool.join.assert_called()
     assert progress.desc == "Cancelled (CTRL-C)"
+    assert progress.colour == "yellow"
 
 
 def test_run_pool_normal(monkeypatch):
@@ -90,7 +91,6 @@ def test_run_pool_normal(monkeypatch):
     stop = DummyEvent()
 
     monkeypatch.setattr("pdfimgextract.extract.Pool", lambda **k: pool)
-
     monkeypatch.setattr(
         "pdfimgextract.extract.finalize_result",
         lambda r, out_dir: (r, None),
@@ -109,27 +109,20 @@ def test_run_pool_normal(monkeypatch):
     assert len(results) == 1
     assert not failed
     assert not interrupted
+    assert progress.updated == 1
 
 
 def test_run_pool_cancelled(monkeypatch):
-    raw = ExtractResult(
-        ok=True,
-        cancelled=False,
-        xref=1,
-        stem="img",
-        ext="png",
-        temp_path="tmpfile",
-        error=None,
-    )
+    raw = make_raw(temp_path="tmpfile")
 
     pool = DummyPool([raw])
     progress = DummyProgress()
-    stop = DummyEvent(True)
+    stop = DummyEvent(True)  # simula cancelamento já setado
 
     monkeypatch.setattr("pdfimgextract.extract.Pool", lambda **k: pool)
+    monkeypatch.setattr("pdfimgextract.extract.remove_file_safely", lambda x: None)
     monkeypatch.setattr(
-        "pdfimgextract.extract.remove_file_safely",
-        lambda x: None,
+        "pdfimgextract.extract.finalize_result", lambda r, out_dir: (r, None)
     )
 
     results, failed, success, interrupted = run_pool(
@@ -141,8 +134,10 @@ def test_run_pool_cancelled(monkeypatch):
         out_dir="out",
     )
 
+    # O item é cancelado e o arquivo temporário é removido
     assert success == 0
     assert results[0].cancelled
+    assert progress.updated == 1
 
 
 def test_run_pool_keyboard_interrupt(monkeypatch):
@@ -154,7 +149,6 @@ def test_run_pool_keyboard_interrupt(monkeypatch):
             raise KeyboardInterrupt
 
     pool = KIpool([])
-
     monkeypatch.setattr("pdfimgextract.extract.Pool", lambda **k: pool)
 
     results, failed, success, interrupted = run_pool(
@@ -169,54 +163,54 @@ def test_run_pool_keyboard_interrupt(monkeypatch):
     assert interrupted
 
 
+def test_run_pool_exception(monkeypatch):
+    progress = DummyProgress()
+    stop = DummyEvent()
+
+    class ErrPool(DummyPool):
+        def imap_unordered(self, *a, **k):
+            raise RuntimeError("boom")
+
+    pool = ErrPool([])
+    monkeypatch.setattr("pdfimgextract.extract.Pool", lambda **k: pool)
+
+    with pytest.raises(RuntimeError):
+        run_pool(
+            tasks=[1],
+            workers=1,
+            pdf_path="x.pdf",
+            stop_event=stop,
+            progress=progress,
+            out_dir="out",
+        )
+
+
 def test_extract_no_images(monkeypatch, tmp_path):
-    monkeypatch.setattr(
-        "pdfimgextract.extract.build_tasks",
-        lambda *a: [],
-    )
-
+    monkeypatch.setattr("pdfimgextract.extract.build_tasks", lambda *a: [])
     code = extract_images_parallel("x.pdf", str(tmp_path), 1)
-
     assert code == EXIT_SUCCESS
 
 
 def test_extract_normal(monkeypatch, tmp_path):
+    monkeypatch.setattr("pdfimgextract.extract.build_tasks", lambda *a: [1])
     monkeypatch.setattr(
-        "pdfimgextract.extract.build_tasks",
-        lambda *a: [1],
+        "pdfimgextract.extract.create_progress_bar", lambda total: DummyProgress()
     )
-
     monkeypatch.setattr(
-        "pdfimgextract.extract.create_progress_bar",
-        lambda total: DummyProgress(),
+        "pdfimgextract.extract.run_pool", lambda *a, **k: ([], [], 1, False)
     )
-
-    monkeypatch.setattr(
-        "pdfimgextract.extract.run_pool",
-        lambda *a, **k: ([], [], 0, False),
-    )
-
-    monkeypatch.setattr(
-        "pdfimgextract.extract.finish_progress_bar",
-        lambda *a: None,
-    )
-
-    monkeypatch.setattr(
-        "pdfimgextract.extract.print_summary",
-        lambda *a: 0,
-    )
+    monkeypatch.setattr("pdfimgextract.extract.finish_progress_bar", lambda *a: None)
+    monkeypatch.setattr("pdfimgextract.extract.print_summary", lambda *a: 0)
 
     code = extract_images_parallel("x.pdf", str(tmp_path), 1)
-
     assert code == 0
 
 
 def test_extract_fatal_error(monkeypatch, tmp_path):
-    monkeypatch.setattr(
-        "pdfimgextract.extract.build_tasks",
-        lambda *a: (_ for _ in ()).throw(RuntimeError("boom")),
-    )
+    def raise_runtime(*a, **k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("pdfimgextract.extract.build_tasks", raise_runtime)
 
     code = extract_images_parallel("x.pdf", str(tmp_path), 1)
-
     assert code == EXIT_FAILURE
