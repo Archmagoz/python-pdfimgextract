@@ -35,6 +35,17 @@ def handle_interrupt(pool, progress, stop_event):
 
 
 def run_pool(tasks, workers, pdf_path, stop_event, progress, out_dir):
+    """
+    Run worker pool and process extraction tasks.
+
+    Handles progress updates, cancellation, and cleanup of temp files.
+
+    Returns:
+        results
+        failed
+        success_count
+        interrupted
+    """
     pool: Pool | None = None
     interrupted = False
 
@@ -101,6 +112,29 @@ def run_pool(tasks, workers, pdf_path, stop_event, progress, out_dir):
 
 
 def extract_images_parallel(pdf_path: str, out_dir: str, workers: int) -> int:
+    """
+    Extract images from a PDF using parallel worker processes.
+
+    This function orchestrates the full extraction pipeline:
+    - Cleans up stale temporary files
+    - Scans the PDF and builds extraction tasks
+    - Executes the worker pool in parallel
+    - Updates the progress bar
+    - Finalizes extracted images
+    - Prints a summary of the results
+
+    Extraction is designed to be safe and interruptible. If the process
+    is interrupted (e.g. CTRL-C) or an error occurs, temporary files are
+    cleaned up before exiting.
+
+    Args:
+        pdf_path (str): Path to the input PDF file.
+        out_dir (str): Directory where extracted images will be saved.
+        workers (int): Number of worker processes used for parallel extraction.
+
+    Returns:
+        int: Exit code indicating success or failure.
+    """
     os.makedirs(out_dir, exist_ok=True)
 
     progress: tqdm | None = None

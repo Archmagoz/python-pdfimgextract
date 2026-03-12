@@ -1,13 +1,12 @@
 import argparse
 import os
-
 import sys
 
-from .colors import RED, ENDC
-
+from pdfimgextract.colors import RED, ENDC
 from pdfimgextract.exit_codes import EXIT_BY_INCORRECT_USAGE
 
 
+# Custom ArgumentParser to override the error method for better error messages
 class Parser(argparse.ArgumentParser):
     def error(self, message: str):
         sys.stderr.write(f"{RED}Error: {message}{ENDC}\n\n")
@@ -15,6 +14,27 @@ class Parser(argparse.ArgumentParser):
 
 
 def get_args() -> argparse.Namespace:
+    """
+    Parse and validate CLI arguments.
+
+    Supports both positional and optional flags for input PDF,
+    output directory, and parallelism level.
+
+    Positional usage:
+        pdfimgextract input.pdf images 8
+
+    Optional usage:
+        pdfimgextract -i input.pdf -o images -p 8
+
+    Returns:
+        argparse.Namespace: Parsed and validated arguments with:
+            - input (str): Path to the input PDF file.
+            - output (str): Output directory for extracted images.
+            - parallelism (int): Number of worker processes (default: 8).
+
+    Raises:
+        SystemExit: If arguments are invalid or required values are missing.
+    """
     parser = Parser(
         formatter_class=argparse.RawTextHelpFormatter,
         description=(
@@ -49,8 +69,8 @@ def get_args() -> argparse.Namespace:
         help="parallelism level (default: 8 workers)",
     )
 
+    # Parse arguments, handle positional vs optional arguments
     args = parser.parse_args()
-
     args.input = args.input or args.input_pos
     args.output = args.output or args.output_pos
     args.parallelism = (
@@ -59,6 +79,7 @@ def get_args() -> argparse.Namespace:
         else args.parallelism_pos if args.parallelism_pos is not None else 8
     )
 
+    # Validate arguments
     if not args.input:
         parser.error("Input PDF not specified.")
 
