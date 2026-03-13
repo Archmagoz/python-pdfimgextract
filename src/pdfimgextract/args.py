@@ -2,8 +2,9 @@ import argparse
 import os
 import sys
 
+from pdfimgextract import __version__
 from pdfimgextract.colors import RED, ENDC
-from pdfimgextract.exit_codes import EXIT_BY_INCORRECT_USAGE
+from pdfimgextract.exit_codes import EXIT_BY_INCORRECT_USAGE, EXIT_SUCCESS
 
 
 # Custom ArgumentParser to override the error method for better error messages
@@ -36,6 +37,7 @@ def get_args() -> argparse.Namespace:
         SystemExit: If arguments are invalid or required values are missing.
     """
     parser = Parser(
+        prog="pdfimgextract",
         formatter_class=argparse.RawTextHelpFormatter,
         description=(
             "Extract images from a PDF file quickly and efficiently.\n"
@@ -54,12 +56,14 @@ def get_args() -> argparse.Namespace:
         ),
     )
 
+    # Positional arguments
     parser.add_argument("input_pos", nargs="?", help="input PDF file")
     parser.add_argument("output_pos", nargs="?", help="output folder")
     parser.add_argument(
         "parallelism_pos", nargs="?", type=int, help="parallelism level"
     )
 
+    # Optional flags
     parser.add_argument("-i", "--input", help="input PDF file")
     parser.add_argument("-o", "--output", help="output folder")
     parser.add_argument(
@@ -69,8 +73,23 @@ def get_args() -> argparse.Namespace:
         help="parallelism level (default: 8 workers)",
     )
 
-    # Parse arguments, handle positional vs optional arguments
+    # Version flag
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+        help="show program's version number and exit",
+    )
+
     args = parser.parse_args()
+
+    # Handle version flag separately to provide a custom message and exit code
+    if args.version is not None and args.version:
+        print(f"pdfimgextract version {__version__}")
+        sys.exit(EXIT_SUCCESS)
+
+    # Map positional arguments to their corresponding optional flags if not provided
     args.input = args.input or args.input_pos
     args.output = args.output or args.output_pos
     args.parallelism = (
