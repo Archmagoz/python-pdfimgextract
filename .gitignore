@@ -1,4 +1,7 @@
-.coverage
+__pycache__/
 build/
+dist/
 src/pdfimgextract.egg-info/
 out/
+
+.coverage
