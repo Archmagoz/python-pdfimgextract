@@ -4,7 +4,7 @@ import sys
 
 from pdfimgextract import __version__
 from pdfimgextract.colors import RED, ENDC
-from pdfimgextract.exit_codes import EXIT_BY_INCORRECT_USAGE, EXIT_SUCCESS
+from pdfimgextract.exit_codes import EXIT_BY_INCORRECT_USAGE
 
 
 # Custom ArgumentParser to override the error method for better error messages
@@ -83,11 +83,6 @@ def get_args() -> argparse.Namespace:
     )
 
     args = parser.parse_args()
-
-    # Handle version flag separately to provide a custom message and exit code
-    if args.version is not None and args.version:
-        print(f"pdfimgextract version {__version__}")
-        sys.exit(EXIT_SUCCESS)
 
     # Map positional arguments to their corresponding optional flags if not provided
     args.input = args.input or args.input_pos
