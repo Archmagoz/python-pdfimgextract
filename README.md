@@ -48,7 +48,7 @@ Input File: 491 MB PDF (514,956,001 bytes)
 
 Extracted result: 230 images (ranging from ~2MB to 10MB each)
 
-![Benchmark de Performance](./docs/assets/benchmark.png)
+![Benchmark](./docs/assets/benchmark.png)
 
 Key Observations:
 Scaling: Moving from 4 to 20 processes nearly doubled the extraction speed (1.93x faster).
