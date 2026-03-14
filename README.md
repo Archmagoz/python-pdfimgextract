@@ -71,8 +71,8 @@ Performance Data
 
 Analysis: 
 
-    • Parallel Overhead: As the number of processes ($n$) increases, the overhead for process synchronization, inter-process communication (IPC), and task distribution begins to outweigh the computation gains.
+• Parallel Overhead: As the number of processes **(N)** increases, the overhead for process synchronization, inter-process communication (IPC), and task distribution begins to outweigh the computation gains.
 
-    • I/O Bottlenecks: Since image extraction is heavily dependent on Disk I/O, the hardware eventually reaches a "saturation point" where adding more CPU workers cannot speed up the rate at which data is written to the storage drive.
+• I/O Bottlenecks: Since image extraction is heavily dependent on Disk I/O, the hardware eventually reaches a "saturation point" where adding more CPU workers cannot speed up the rate at which data is written to the storage drive.
 
-    • The "Sweet Spot": For this hardware configuration, 20 processes represent the practical limit for scaling. Beyond this point, you are consuming 100% more CPU resources (moving from 20 to 40) for a marginal speed gain of only ~6.4%.
+• The "Sweet Spot": For this hardware configuration, 20 processes represent the practical limit for scaling. Beyond this point, you are consuming 100% more CPU resources (moving from 20 to 40) for a marginal speed gain of only ~6.4%.
