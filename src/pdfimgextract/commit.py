@@ -2,7 +2,6 @@ import os
 
 from pdfimgextract.datamodels import ExtractResult
 from pdfimgextract.cleanup import remove_file_safely
-from pdfimgextract.utils import fix_ext
 
 
 def finalize_result(
@@ -63,7 +62,7 @@ def finalize_result(
         )
 
     # Build final output path
-    final_path = os.path.join(out_dir, f"{result.stem}.{fix_ext(result.ext)}")
+    final_path = os.path.join(out_dir, f"{result.stem}.{result.ext}")
 
     try:
         # Atomic rename ensures the file appears only when fully written
