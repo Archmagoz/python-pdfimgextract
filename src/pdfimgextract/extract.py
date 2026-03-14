@@ -18,7 +18,10 @@ from pdfimgextract.colors import RED, YELLOW, ENDC
 
 
 def extract_images_parallel(
-    pdf_path: str, out_dir: str, workers: int, overwrite: bool
+    pdf_path: str,
+    out_dir: str,
+    workers: int,
+    overwrite: bool,
 ) -> int:
     """
     Extract images from a PDF using parallel worker processes.
