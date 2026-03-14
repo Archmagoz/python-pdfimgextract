@@ -16,6 +16,7 @@ def test_main_execution_flow(mock_extract, mock_get_args, mock_colorama):
     mock_args.output = "output_folder"
     mock_args.parallelism = 4
     mock_args.overwrite = True
+    mock_args.skip_dedup = False
     mock_get_args.return_value = mock_args
 
     # 2. Setup Mock Return Value for extraction
@@ -33,7 +34,11 @@ def test_main_execution_flow(mock_extract, mock_get_args, mock_colorama):
 
     # Ensure the extraction function was called with the mapped arguments
     mock_extract.assert_called_once_with(
-        pdf_path="input.pdf", out_dir="output_folder", workers=4, overwrite=True
+        pdf_path="input.pdf",
+        out_dir="output_folder",
+        workers=4,
+        overwrite=True,
+        dedup=False,
     )
 
     # Ensure the exit code from extraction is returned by main

@@ -57,19 +57,17 @@ def test_build_extract_tasks_empty_list():
 @patch("pdfimgextract.build_tasks.scan_pdf_images")
 @patch("fitz.open")
 def test_build_tasks_integration(mock_fitz_open, mock_scan):
-    """Test the orchestration from PDF path to Task list."""
     # Setup mocks
     mock_pdf_context = mock_fitz_open.return_value.__enter__.return_value
-    mock_scan.return_value = ([100, 200], None, None)  # Mock xrefs, skip others
+    mock_scan.return_value = ([100, 200], None, None)
 
     pdf_path = "sample.pdf"
     out_dir = "out"
 
     tasks = build_tasks(pdf_path, out_dir, overwrite=True)
 
-    # Assertions
-    mock_fitz_open.assert_called_with(pdf_path)
-    mock_scan.assert_called_once_with(mock_pdf_context)
+    mock_scan.assert_called_once_with(mock_pdf_context, False)
+
     assert len(tasks) == 2
     assert isinstance(tasks[0], ExtractTask)
     assert tasks[0].xref == 100

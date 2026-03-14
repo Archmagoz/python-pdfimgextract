@@ -10,7 +10,7 @@ def test_extract_images_parallel_no_tasks():
     """Covers: if total == 0"""
     with patch("os.makedirs"):
         with patch("pdfimgextract.extract.build_tasks", return_value=[]):
-            result = extract_images_parallel("in.pdf", "out", 4, False)
+            result = extract_images_parallel("in.pdf", "out", 4, False, False)
             assert result == EXIT_SUCCESS
 
 
@@ -33,7 +33,7 @@ def test_extract_images_parallel_success(
 
     with patch("pdfimgextract.extract.cleanup_stale_temp_files"):
         with patch("pdfimgextract.extract.finish_progress_bar"):
-            result = extract_images_parallel("in.pdf", "out", 4, False)
+            result = extract_images_parallel("in.pdf", "out", 4, False, False)
             assert result == EXIT_SUCCESS
 
 
@@ -53,7 +53,7 @@ def test_keyboard_interrupt_with_active_progress(mock_pb, mock_build):
     with patch("pdfimgextract.extract.run_pool", side_effect=KeyboardInterrupt):
         with patch("pdfimgextract.extract.cleanup_stale_temp_files"):
             with patch("pdfimgextract.extract.finish_progress_bar") as mock_finish:
-                result = extract_images_parallel("in.pdf", "out", 4, False)
+                result = extract_images_parallel("in.pdf", "out", 4, False, False)
                 assert result == EXIT_FAILURE
                 mock_finish.assert_called_once()
 
@@ -67,7 +67,7 @@ def test_fatal_error_without_progress(mock_build):
     mock_build.side_effect = RuntimeError("Early crash")
     with patch("pdfimgextract.extract.cleanup_stale_temp_files"):
         # sys.stderr.write check can be added if needed
-        result = extract_images_parallel("in.pdf", "out", 4, False)
+        result = extract_images_parallel("in.pdf", "out", 4, False, False)
         assert result == EXIT_FAILURE
 
 
@@ -87,7 +87,7 @@ def test_summary_indicates_failure():
                                 return_value=mock_summary,
                             ):
                                 result = extract_images_parallel(
-                                    "in.pdf", "out", 4, False
+                                    "in.pdf", "out", 4, False, False
                                 )
                                 assert result == EXIT_FAILURE
 
@@ -102,5 +102,7 @@ def test_suppress_exception_in_cleanup(mock_finish):
             with patch("pdfimgextract.extract.create_progress_bar"):
                 with patch("pdfimgextract.extract.run_pool", side_effect=Exception):
                     with patch("pdfimgextract.extract.cleanup_stale_temp_files"):
-                        result = extract_images_parallel("in.pdf", "out", 4, False)
+                        result = extract_images_parallel(
+                            "in.pdf", "out", 4, False, False
+                        )
                         assert result == EXIT_FAILURE
