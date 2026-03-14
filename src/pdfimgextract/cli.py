@@ -14,4 +14,5 @@ def main() -> int:
         out_dir=args.output,
         workers=args.parallelism,
         overwrite=args.overwrite,
+        dedup=args.skip_dedup,
     )

@@ -33,6 +33,7 @@ def get_args() -> argparse.Namespace:
             - output (str): Output directory for extracted images.
             - parallelism (int): Number of worker processes (default: 8).
             - overwrite (bool): Overwrite existing files in the output folder.
+            - skip-dedup (bool): Skip deduplication of images (not recommended).
 
     Raises:
         SystemExit: If arguments are invalid or required values are missing.
@@ -88,6 +89,17 @@ def get_args() -> argparse.Namespace:
         action="version",
         version=f"%(prog)s {__version__}",
         help="show program's version number and exit",
+    )
+
+    # deduplication skip flag (not recommended)
+    parser.add_argument(
+        "--skip-dedup",
+        action="store_true",
+        help=(
+            "skip deduplication of images (not recommended)\n"
+            "this will result in duplicate images being extracted\n"
+            "most usefull for testing raw extraction performance with benchmarks"
+        ),
     )
 
     args = parser.parse_args()

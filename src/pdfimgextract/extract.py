@@ -22,6 +22,7 @@ def extract_images_parallel(
     out_dir: str,
     workers: int,
     overwrite: bool,
+    dedup: bool,
 ) -> int:
     """
     Extract images from a PDF using parallel worker processes.
@@ -38,7 +39,7 @@ def extract_images_parallel(
 
     try:
         # Build the extraction tasks
-        tasks = build_tasks(pdf_path, out_dir, run_id, overwrite)
+        tasks = build_tasks(pdf_path, out_dir, run_id, overwrite, dedup)
 
         total = len(tasks)
         if total == 0:

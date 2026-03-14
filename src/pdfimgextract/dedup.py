@@ -50,7 +50,9 @@ def _compute_stream_hash(pdf: fitz.Document, xref: int) -> bytes | None:
     return hashlib.sha256(stream).digest()
 
 
-def scan_pdf_images(pdf: fitz.Document) -> tuple[list[int], int, int]:
+def scan_pdf_images(
+    pdf: fitz.Document, skip_dedup: bool = False
+) -> tuple[list[int], int, int]:
     """
     Scan the PDF and return a list of unique image xrefs.
     Deduplication is performed using:
@@ -70,35 +72,46 @@ def scan_pdf_images(pdf: fitz.Document) -> tuple[list[int], int, int]:
     progress = create_progress_bar(total=len(pdf), desc="Scanning PDF", unit="page")
 
     try:
-        for page in pdf:
-            for img in page.get_images(full=True):
-                xref = img[0]
+        if skip_dedup:
+            for page in pdf:
+                for img in page.get_images(full=True):
+                    xref = img[0]
+                    xrefs.append(xref)
+                progress.update(1)
+            scanning_complete(progress)
+            progress.close()
+            return xrefs, len(xrefs), 0
 
-                if xref in seen_xref:
-                    duplicates += 1
-                    continue
-                seen_xref.add(xref)
+        else:
+            for page in pdf:
+                for img in page.get_images(full=True):
+                    xref = img[0]
 
-                signature = _image_signature(img)
-                img_hash = None
-
-                if signature in seen_signatures:
-                    img_hash = _compute_stream_hash(pdf, xref)
-                    if img_hash and img_hash in seen_hashes:
+                    if xref in seen_xref:
                         duplicates += 1
                         continue
+                    seen_xref.add(xref)
 
-                xrefs.append(xref)
-                unique_images += 1
-                seen_signatures.add(signature)
+                    signature = _image_signature(img)
+                    img_hash = None
 
-                if img_hash is None:
-                    img_hash = _compute_stream_hash(pdf, xref)
-                if img_hash:
-                    seen_hashes.add(img_hash)
+                    if signature in seen_signatures:
+                        img_hash = _compute_stream_hash(pdf, xref)
+                        if img_hash and img_hash in seen_hashes:
+                            duplicates += 1
+                            continue
 
-            progress.update(1)
-            update_scan_stats(progress, unique_images, duplicates)
+                    xrefs.append(xref)
+                    unique_images += 1
+                    seen_signatures.add(signature)
+
+                    if img_hash is None:
+                        img_hash = _compute_stream_hash(pdf, xref)
+                    if img_hash:
+                        seen_hashes.add(img_hash)
+
+                progress.update(1)
+                update_scan_stats(progress, unique_images, duplicates)
 
     except KeyboardInterrupt:
         if progress is not None:
