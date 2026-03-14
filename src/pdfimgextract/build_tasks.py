@@ -2,12 +2,15 @@ import os
 import fitz
 import hashlib
 
+from contextlib import suppress
+
 from pdfimgextract.colors import ENDC, YELLOW
 from pdfimgextract.datamodels import ExtractTask
 from pdfimgextract.progress_bar import (
     create_progress_bar,
     update_scan_stats,
     scanning_complete,
+    finish_progress_bar,
 )
 
 
@@ -67,11 +70,6 @@ def _scan_pdf_images(pdf: fitz.Document) -> tuple[list[int], int, int]:
     1. xref check (fast)
     2. metadata signature
     3. stream hash (slow but accurate)
-
-    Returns:
-        xrefs: list of unique image references
-        unique_images: number of accepted images
-        duplicates: number of skipped duplicates
     """
 
     seen_xref: set[int] = set()
@@ -83,46 +81,54 @@ def _scan_pdf_images(pdf: fitz.Document) -> tuple[list[int], int, int]:
     unique_images = 0
     duplicates = 0
 
-    progress = create_progress_bar(len(pdf), desc="Scanning PDF")
+    # Create scanning progress bar
+    progress = create_progress_bar(
+        total=len(pdf),
+        desc="Scanning PDF",
+        unit="page",
+    )
 
-    for page in pdf:
+    try:
+        for page in pdf:
+            for img in page.get_images(full=True):
 
-        for img in page.get_images(full=True):
+                xref = img[0]
 
-            xref = img[0]
-
-            # Skip if this object was already processed
-            if xref in seen_xref:
-                duplicates += 1
-                continue
-
-            seen_xref.add(xref)
-
-            signature = _image_signature(img)
-
-            img_hash = None
-
-            # If signature already seen, confirm with hash
-            if signature in seen_signatures:
-                img_hash = _compute_stream_hash(pdf, xref)
-
-                if img_hash and img_hash in seen_hashes:
+                if xref in seen_xref:
                     duplicates += 1
                     continue
 
-            # Accept image
-            xrefs.append(xref)
-            unique_images += 1
-            seen_signatures.add(signature)
+                seen_xref.add(xref)
 
-            if img_hash is None:
-                img_hash = _compute_stream_hash(pdf, xref)
+                signature = _image_signature(img)
 
-            if img_hash:
-                seen_hashes.add(img_hash)
+                img_hash = None
 
-        progress.update(1)
-        update_scan_stats(progress, unique_images, duplicates)
+                if signature in seen_signatures:
+                    img_hash = _compute_stream_hash(pdf, xref)
+
+                    if img_hash and img_hash in seen_hashes:
+                        duplicates += 1
+                        continue
+
+                xrefs.append(xref)
+                unique_images += 1
+                seen_signatures.add(signature)
+
+                if img_hash is None:
+                    img_hash = _compute_stream_hash(pdf, xref)
+
+                if img_hash:
+                    seen_hashes.add(img_hash)
+
+            progress.update(1)
+            update_scan_stats(progress, unique_images, duplicates)
+
+    except KeyboardInterrupt:
+        if progress is not None:
+            with suppress(Exception):
+                finish_progress_bar(progress, cancelled=True)
+        raise
 
     scanning_complete(progress)
     progress.close()
@@ -181,18 +187,6 @@ def build_tasks(
 ) -> list[ExtractTask]:
     """
     Scan a PDF and create extraction tasks for unique images.
-
-    The function performs a full scan of the PDF to detect images
-    and remove duplicates using multiple levels of checks.
-
-    Deduplication strategy:
-
-    1. Skip repeated xref objects
-    2. Compare metadata signatures
-    3. Confirm duplicates using a SHA256 hash of the image stream
-
-    After scanning, extraction tasks are generated for each
-    unique image.
     """
 
     with fitz.open(pdf_path) as pdf:

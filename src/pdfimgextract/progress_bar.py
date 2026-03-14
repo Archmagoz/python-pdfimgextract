@@ -1,9 +1,35 @@
 from tqdm import tqdm
 
 
-def create_progress_bar(total: int | None = None, desc: str = "Processing") -> tqdm:
+# Fixed width used by ALL progress bars in the application.
+# This guarantees both scanning and extraction bars look identical.
+PROGRESS_BAR_WIDTH = 140
+
+
+def create_progress_bar(
+    total: int | None = None,
+    desc: str = "Processing",
+    unit: str = "item",
+) -> tqdm:
     """
     Create a standardized tqdm progress bar.
+
+    This function centralizes ALL visual configuration for progress bars
+    used in the application so both phases (scan and extraction) always
+    look identical.
+
+    Args:
+        total:
+            Total number of steps to track.
+
+        desc:
+            Text displayed before the progress bar.
+
+        unit:
+            Unit label displayed next to the counter.
+            Examples:
+                "page" -> scanning phase
+                "img"  -> extraction phase
     """
 
     return tqdm(
@@ -11,15 +37,19 @@ def create_progress_bar(total: int | None = None, desc: str = "Processing") -> t
         desc=desc,
         colour="green",
         leave=True,
-        dynamic_ncols=True,
-        unit=" img",
+        ncols=PROGRESS_BAR_WIDTH,  # Fixed width for consistent layout
+        dynamic_ncols=False,
+        unit=f" {unit}",
         smoothing=0.1,
     )
 
 
 def update_scan_stats(progress: tqdm, unique: int, duplicates: int) -> None:
     """
-    Update stats displayed next to the scanning progress bar.
+    Update statistics during the PDF scanning phase.
+
+    Displays how many unique images were discovered and how many
+    duplicates were skipped.
     """
 
     progress.set_postfix(
@@ -28,9 +58,25 @@ def update_scan_stats(progress: tqdm, unique: int, duplicates: int) -> None:
     )
 
 
+def update_extract_stats(progress: tqdm, success: int, failed: int) -> None:
+    """
+    Update statistics during the extraction phase.
+
+    Shows live success/failure counters while images are being written.
+    """
+
+    progress.set_postfix(
+        ok=success,
+        fail=failed,
+    )
+
+
 def scanning_complete(progress: tqdm) -> None:
     """
     Mark the scanning phase as completed.
+
+    The progress bar description is updated so the user can clearly
+    see that the scan finished before extraction begins.
     """
 
     progress.set_description("Scanning complete")
@@ -39,12 +85,17 @@ def scanning_complete(progress: tqdm) -> None:
 
 def finish_progress_bar(progress: tqdm, cancelled: bool = False) -> None:
     """
-    Finalize the progress bar.
+    Finalize a progress bar.
+
+    Updates the visual state to indicate completion or interruption.
     """
 
-    progress.set_description(
-        "Cancelled (CTRL-C)" if cancelled else "Extraction completed"
-    )
-    progress.colour = "yellow" if cancelled else "green"
+    if cancelled:
+        progress.set_description_str("Cancelled (CTRL-C)")
+        progress.colour = "yellow"
+    else:
+        progress.set_description_str("Extraction completed")
+        progress.colour = "green"
+
     progress.refresh()
     progress.close()
