@@ -32,6 +32,7 @@ def get_args() -> argparse.Namespace:
             - input (str): Path to the input PDF file.
             - output (str): Output directory for extracted images.
             - parallelism (int): Number of worker processes (default: 8).
+            - overwrite (bool): Overwrite existing files in the output folder.
 
     Raises:
         SystemExit: If arguments are invalid or required values are missing.
@@ -48,7 +49,8 @@ def get_args() -> argparse.Namespace:
             "Examples:\n"
             "  pdfimgextract input.pdf images\n"
             "  pdfimgextract input.pdf images 8\n"
-            "  pdfimgextract -i input.pdf -o images -p 8\n\n"
+            "  pdfimgextract -i input.pdf -o images -p 8\n"
+            "  pdfimgextract -i input.pdf -o images --overwrite\n\n"
             "Notes:\n"
             "  - Duplicate images in the PDF are automatically skipped.\n"
             "  - Extraction runs in parallel for maximum performance.\n"
@@ -71,6 +73,12 @@ def get_args() -> argparse.Namespace:
         "--parallelism",
         type=int,
         help="parallelism level (default: 8 workers)",
+    )
+
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="overwrite existing files in the output directory",
     )
 
     # Version flag

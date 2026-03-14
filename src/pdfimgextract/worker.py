@@ -14,8 +14,8 @@ import signal
 from typing import Protocol
 from contextlib import suppress
 
-from .cleanup import remove_file_safely
-from .datamodels import ExtractTask, ExtractResult
+from pdfimgextract.cleanup import remove_file_safely
+from pdfimgextract.datamodels import ExtractTask, ExtractResult
 
 # ============================================================
 # Result helpers

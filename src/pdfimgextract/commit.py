@@ -1,8 +1,8 @@
 import os
 
-from .datamodels import ExtractResult
-from .cleanup import remove_file_safely
-from .utils import fix_ext
+from pdfimgextract.datamodels import ExtractResult
+from pdfimgextract.cleanup import remove_file_safely
+from pdfimgextract.utils import fix_ext
 
 
 def finalize_result(

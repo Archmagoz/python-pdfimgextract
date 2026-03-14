@@ -1,7 +1,7 @@
 from colorama import init as colorama_init
 
-from .args import get_args
-from .extract import extract_images_parallel
+from pdfimgextract.args import get_args
+from pdfimgextract.extract import extract_images_parallel
 
 
 def main() -> int:
@@ -13,4 +13,5 @@ def main() -> int:
         pdf_path=args.input,
         out_dir=args.output,
         workers=args.parallelism,
+        overwrite=args.overwrite,
     )
