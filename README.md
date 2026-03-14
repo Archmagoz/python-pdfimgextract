@@ -71,7 +71,7 @@ Performance Data
 
 Analysis: 
 
-• Parallel Overhead: As the number of processes **(N)** increases, the overhead for process synchronization, inter-process communication (IPC), and task distribution begins to outweigh the computation gains.
+• Parallel Overhead: As the number of processes **(n)** increases, the overhead for process synchronization, inter-process communication (IPC), and task distribution begins to outweigh the computation gains.
 
 • I/O Bottlenecks: Since image extraction is heavily dependent on Disk I/O, the hardware eventually reaches a "saturation point" where adding more CPU workers cannot speed up the rate at which data is written to the storage drive.
 
