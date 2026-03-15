@@ -1,32 +1,31 @@
 # python-pdfimgextract
 
-## 🚀 python-pdfimgextract
+## 🚀 Overview
 
-A high-performance, parallel PDF image extractor built for speed and reliability.
+**python-pdfimgextract** is a high-performance PDF image extraction tool designed to maximize throughput through multiprocessing.
+
+The project focuses on **speed, reliability, and efficient parallel processing**, enabling large PDFs with hundreds of high-resolution images to be processed significantly faster than traditional single-threaded approaches.
 
 ---
 
 ## ✨ Features
 
-* ⚡ **Parallel Extraction**: Fully utilizes multi-core processors for maximum throughput.
-* 🛡️ **Atomic Writes**: Ensures file integrity by preventing partial or corrupted writes.
-* 🧹 **Deduplication**: Automatically identifies and removes duplicate images.
-* 💻 **Clean CLI**: Simple and intuitive command-line interface.
-* 📊 **Progress Tracking**: Real-time visual feedback via a progress bar.
-* 🛑 **Safe Interruption**: Handles signals gracefully to stop without leaving a mess.
+| Feature | Description |
+|-------|-------------|
+| ⚡ Parallel Extraction | Utilizes multiprocessing to decode images across multiple CPU cores |
+| 🛡️ Atomic Writes | Prevents partially written files during crashes |
+| 🧹 Deduplication | Optional removal of identical images |
+| 📊 Progress Tracking | Real-time progress bar during extraction |
+| 🛑 Graceful Interrupts | Safe handling of SIGINT and termination signals |
+| 💻 Clean CLI | Simple command-line interface |
 
 ---
 
 ## 📥 Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/your-username/python-pdfimgextract
-
-# Navigate to the directory
 cd python-pdfimgextract
-
-# Install the package and dependencies
 pip install .
 ```
 
@@ -34,74 +33,173 @@ pip install .
 
 ## 🛠️ Usage
 
+Basic usage:
+
 ```bash
-pdfimgextract [INPUT_PDF] [OUTPUT_DIR] [NUMBER_OF_PROCESSES]
+pdfimgextract INPUT_PDF OUTPUT_DIR NUMBER_OF_PROCESSES
 ```
 
-Or use the optional flags:
+Example:
 
-* `--input` | `-i`
-* `--output` | `-o`
-* `--parallelism` | `-p`
+```bash
+pdfimgextract manga.pdf output 16
+```
 
-> The default number of parallel processes is **8** if not specified.
+Optional flags:
 
----
+```
+-i / --input
+-o / --output
+-p / --parallelism
+```
 
-## 📊 Performance, Scalability & Efficiency Analysis
-
-**Performance Benchmark**
-To evaluate the efficiency of the multiprocessing implementation, a stress test was conducted using a high-resolution PDF document.
-
-💻 **Test Environment**:
-
-* OS: Windows 11
-* CPU: 28 Cores
-* Input File: 491 MB PDF (514,956,001 bytes)
-* Extracted images: 230 (ranging from ~2MB to 10MB each)
-
-### 📈 Performance & Speedup ($S$) Analysis
-
-The system demonstrates near-linear scaling at low process counts, followed by a plateau as hardware limits are reached.
-
-* **Near-Perfect Scaling (1-2 Processes):** The transition from a single process to two shows an efficiency of **98.2%**, reducing execution time from 111.88s to 56.98s. This indicates minimal initial synchronization overhead.
-* **Peak Throughput:** The maximum performance was achieved at **32 processes**, reaching a minimum execution time of **11.41s** with a recorded **Speedup of 9.81x**.
-* **Hardware Saturation & Regression:** Beyond the peak, increasing the load to 64 processes resulted in a performance regression (11.67s). This is a textbook case of **CPU over-provisioning**, where the overhead of context switching and thread management outweighs the benefits of parallelization.
-
-### 🔍 Efficiency ($E$) & Resource Utilization
-
-Efficiency measures how effectively each additional CPU worker is utilized. As shown in the data, efficiency declines as the task becomes increasingly fragmented.
-
-![Benchmark](./docs/assets/benchmark_final.png)
-
-#### Key Technical Observations
-
-* **Amdahl’s Law & I/O Bottlenecks:** The sharp drop in efficiency (from 86.3% at 4 processes to 15.0% at 64) suggests a significant serial fraction in the workload. While PDF decoding is CPU-bound, writing 230 high-resolution images to storage is **I/O-bound**. Once the disk write-buffer is saturated, additional CPU processes offer no further speedup.
-* **Memory Footprint Scaling:** RAM consumption scales aggressively, jumping from **349.6 MB** (1 process) to over **9.3 GB** (64 processes). This represents a ~26x increase in memory overhead for only a ~9.6x gain in speed, highlighting the diminishing returns of high-concurrency configurations.
-* **The Operational "Sweet Spot":** For this hardware configuration, the range between **8 and 16 processes** represents the ideal balance. It achieves a significant speedup (up to 7.86x) while maintaining a resource-to-performance ratio above 49% efficiency.
-* **System Thrashing:** At 64 processes—well beyond the 28 physical cores—efficiency hits its lowest point. The OS spends a disproportionate amount of time swapping tasks ("thrashing") rather than performing productive computation.
+If the number of processes is not specified, the tool defaults to **8 worker processes**.
 
 ---
 
-## 🏆 Final Verdict Summary
+## 📊 Performance Benchmark
 
-The benchmarks demonstrate that **pdfimgextract** significantly reduces processing time through effective parallelization.
+To evaluate the scalability of the multiprocessing implementation, a benchmark was conducted using a large, high-resolution PDF.
 
-* Single-core: 114.3s
-* Multi-core: 11.3s
+### 🖥️ Test Environment
 
-> Represents a 10x performance increase.
+• **OS**: Windows 11  
+• **CPU**: 28 Cores  
+• **Input File**: 491 MB PDF (514.956.001 bytes)  
+• **Extracted Images**: 230 images  
+• **Image Size Range**: ~2MB – 10MB
 
-### 🚀 Recommendation
+### Benchmark Results
 
-For most high-resolution extraction tasks:
+| Proc | Avg (s) | Median | Std Dev | RAM (MB) | Speedup | Eff. |
+|-----|------|------|------|------|------|------|
+| 1  | 111.88 | 111.84 | 0.09 | 349 | 1.00 | 100% |
+| 2  | 56.98  | 57.06  | 0.34 | 626 | 1.96 | 98% |
+| 4  | 32.41  | 32.49  | 0.12 | 1159 | 3.45 | 86% |
+| 8  | 20.16  | 20.17  | 0.04 | 2254 | 5.55 | 69% |
+| 16 | 14.24  | 14.28  | 0.08 | 4423 | 7.86 | 49% |
+| 32 | 11.41 | 11.41 | 0.03 | 7309 | 9.81x | 31% |
+| 64 | 11.67 | 11.67 | 0.06 | 9306 | 9.59 | 15% |
 
-* **For Efficiency**: Use a process count equal to half of your available logical cores.
-* **For Raw Speed**: Match the process count to your total physical cores ($N$).
-* **Avoid Over-provisioning**: Setting processes beyond your hardware thread count (e.g., 64 on a 28-core system) will degrade performance due to I/O saturation and context switching.
+---
 
-### 🛠️ Key Takeaways
+## 📈 Performance Analysis
 
-* Max Speedup: $10.12x$
-* Peak Efficiency: 99% (at 2 processes)
-* Optimal Range: 8 - 20 processes
+### Scaling Behavior
+
+The benchmark shows **near-linear scaling at low process counts**, followed by a performance plateau as system limits are reached.
+
+### Near-linear Speedup (1 → 2 processes)
+
+Execution time drops from:
+
+```
+111.88s → 56.98s
+```
+
+Efficiency:
+
+```
+98.2%
+```
+
+This indicates that the multiprocessing overhead (process creation, IPC, scheduling) is extremely small relative to the workload.
+
+---
+
+### Peak Throughput
+
+The fastest execution time occurs at **32 processes**:
+
+```
+11.41 seconds
+Speedup: 9.81x
+```
+
+At this point, CPU resources are almost fully saturated and the workload is maximally parallelized.
+
+Beyond this point, performance gains disappear due to system-level constraints.
+
+---
+
+### CPU Oversubscription
+
+Running **64 processes on a 28-core CPU** causes a slight performance regression:
+
+```
+11.41s → 11.67s
+```
+
+This occurs due to:
+
+- Increased **context switching**
+- OS scheduler overhead
+- Reduced cache locality
+- Worker contention for shared resources
+
+When the number of active processes exceeds the number of physical cores, the operating system must constantly swap running tasks, reducing overall efficiency.
+
+---
+
+## ⚙️ Efficiency Analysis
+
+Efficiency is defined as:
+
+```
+Efficiency = Speedup / Number of Processes
+```
+
+It measures how effectively each additional CPU contributes to performance.
+
+Observed efficiency:
+
+| Processes | Efficiency |
+|----------|-----------|
+| 2 | 98.2% |
+| 4 | 86.3% |
+| 8 | 69.4% |
+| 16 | 49.1% |
+| 32 | 30.7% |
+| 64 | 15.0% |
+
+This decline is expected and is explained by **Amdahl's Law**.
+
+---
+
+## 💽 I/O Bottlenecks
+
+Although image extraction itself is largely CPU-bound, writing **230 large images (2–10MB)** to disk introduces an additional bottleneck.
+
+When many workers attempt to write simultaneously:
+
+- Disk write buffers become saturated
+- I/O queue latency increases
+- Workers stall waiting for filesystem operations
+
+This explains why increasing processes beyond ~32 yields no additional speedup.
+
+---
+
+## 🏁 Final Performance Summary
+
+| Metric | Value |
+|------|------|
+| Baseline (1 process) | 111.88s |
+| Best Runtime | 11.41s |
+| Maximum Speedup | **9.81x** |
+| Peak Efficiency | **98.2%** |
+| Optimal Range | **8 – 16 processes** |
+
+---
+
+## 🚀 Conclusion
+
+The benchmark results demonstrate that **python-pdfimgextract effectively transforms a heavy serial workload into a scalable parallel pipeline**.
+
+By leveraging multiprocessing and efficient I/O handling, the tool achieves:
+
+- **~10x performance improvement**
+- High CPU utilization
+- Predictable scaling behavior
+
+This makes it well-suited for processing **large PDFs containing hundreds of high-resolution images**.
