@@ -24,9 +24,7 @@ The project focuses on **speed, reliability, and efficient parallel processing**
 ## 📥 Installation
 
 ```bash
-git clone https://github.com/your-username/python-pdfimgextract
-cd python-pdfimgextract
-pip install .
+pip install pdfimgextract
 ```
 
 ---
