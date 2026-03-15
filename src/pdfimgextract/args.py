@@ -18,8 +18,7 @@ def get_args() -> argparse.Namespace:
     """
     Parse and validate CLI arguments.
 
-    Supports both positional and optional flags for input PDF,
-    output directory, and parallelism level.
+    Supports both positional and optional flags for input PDF.
 
     Positional usage:
         pdfimgextract input.pdf images 8
@@ -32,6 +31,7 @@ def get_args() -> argparse.Namespace:
             - input (str): Path to the input PDF file.
             - output (str): Output directory for extracted images.
             - parallelism (int): Number of worker processes (default: 8).
+            - version (srt): Show version number and exit.
             - overwrite (bool): Overwrite existing files in the output folder.
             - skip-dedup (bool): Skip deduplication of images (not recommended).
 
@@ -63,7 +63,7 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("input_pos", nargs="?", help="input PDF file")
     parser.add_argument("output_pos", nargs="?", help="output folder")
     parser.add_argument(
-        "parallelism_pos", nargs="?", type=int, help="parallelism level"
+        "parallelism_pos", nargs="?", type=int, help="parallelism level", default=8
     )
 
     # Optional flags
@@ -73,13 +73,7 @@ def get_args() -> argparse.Namespace:
         "-p",
         "--parallelism",
         type=int,
-        help="parallelism level (default: 8 workers)",
-    )
-
-    parser.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="overwrite existing files in the output directory",
+        help="parallelism level",
     )
 
     # Version flag
@@ -91,6 +85,13 @@ def get_args() -> argparse.Namespace:
         help="show program's version number and exit",
     )
 
+    # Overwrite flag
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="overwrite existing files in the output directory",
+    )
+
     # deduplication skip flag (not recommended)
     parser.add_argument(
         "--skip-dedup",
@@ -99,6 +100,7 @@ def get_args() -> argparse.Namespace:
             "skip deduplication of images (not recommended)\n"
             "this will result in duplicate images being extracted\n"
             "most usefull for testing raw extraction performance with benchmarks"
+            "or if you already know the pdf don't have any duplicate"
         ),
     )
 
@@ -107,11 +109,7 @@ def get_args() -> argparse.Namespace:
     # Map positional arguments to their corresponding optional flags if not provided
     args.input = args.input or args.input_pos
     args.output = args.output or args.output_pos
-    args.parallelism = (
-        args.parallelism
-        if args.parallelism is not None
-        else args.parallelism_pos if args.parallelism_pos is not None else 8
-    )
+    args.parallelism = args.parallelism or args.parallelism_pos
 
     # Validate arguments
     if not args.input:
