@@ -1,9 +1,10 @@
 import fitz
 import uuid
 
-from pdfimgextract.datamodels import ExtractTask
-from pdfimgextract.colors import ENDC, YELLOW
 from pdfimgextract.dedup import load_existing_stems, scan_pdf_images
+from pdfimgextract.datamodels import ExtractTask
+
+from pdfimgextract.colors import ENDC, YELLOW
 
 
 def _build_extract_tasks(

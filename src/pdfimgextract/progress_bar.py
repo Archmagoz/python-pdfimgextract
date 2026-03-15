@@ -1,11 +1,6 @@
 from tqdm import tqdm
 
 
-# Fixed width used by ALL progress bars in the application.
-# This guarantees both scanning and extraction bars look identical.
-PROGRESS_BAR_WIDTH = 140
-
-
 def create_progress_bar(
     total: int | None = None,
     desc: str = "Processing",
@@ -37,8 +32,7 @@ def create_progress_bar(
         desc=desc,
         colour="green",
         leave=True,
-        ncols=PROGRESS_BAR_WIDTH,  # Fixed width for consistent layout
-        dynamic_ncols=False,
+        dynamic_ncols=True,
         unit=f" {unit}",
         smoothing=0.1,
     )

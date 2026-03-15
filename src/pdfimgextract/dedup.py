@@ -51,7 +51,7 @@ def _compute_stream_hash(pdf: fitz.Document, xref: int) -> bytes | None:
 
 
 def scan_pdf_images(
-    pdf: fitz.Document, skip_dedup: bool = False
+    pdf: fitz.Document, dedup: bool = False
 ) -> tuple[list[int], int, int]:
     """
     Scan the PDF and return a list of unique image xrefs.
@@ -72,7 +72,7 @@ def scan_pdf_images(
     progress = create_progress_bar(total=len(pdf), desc="Scanning PDF", unit="page")
 
     try:
-        if skip_dedup:
+        if not dedup:
             for page in pdf:
                 for img in page.get_images(full=True):
                     xref = img[0]

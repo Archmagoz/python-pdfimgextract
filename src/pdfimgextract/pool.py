@@ -3,8 +3,8 @@ from __future__ import annotations
 from multiprocessing.pool import Pool
 
 from pdfimgextract.worker import init_worker, worker_extract, ExtractResult
-from pdfimgextract.commit import finalize_result
 from pdfimgextract.cleanup import remove_file_safely
+from pdfimgextract.commit import finalize_result
 
 
 def handle_interrupt(pool, progress, stop_event):

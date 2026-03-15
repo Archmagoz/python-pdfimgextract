@@ -8,11 +8,12 @@ import os
 import sys
 import uuid
 
-from pdfimgextract.cleanup import cleanup_stale_temp_files
 from pdfimgextract.progress_bar import create_progress_bar, finish_progress_bar
+from pdfimgextract.cleanup import cleanup_stale_temp_files
 from pdfimgextract.build_tasks import build_tasks
 from pdfimgextract.summary import print_summary
 from pdfimgextract.pool import run_pool
+
 from pdfimgextract.exit_codes import EXIT_SUCCESS, EXIT_FAILURE
 from pdfimgextract.colors import RED, YELLOW, ENDC
 
@@ -30,11 +31,9 @@ def extract_images_parallel(
     progress bars and temporary files.
     """
 
-    os.makedirs(out_dir, exist_ok=True)
-
+    run_id = uuid.uuid4().hex[:12]
     progress: tqdm | None = None
     interrupted = False
-    run_id = uuid.uuid4().hex[:12]
     stop_event = Event()
 
     try:
@@ -50,6 +49,9 @@ def extract_images_parallel(
         progress = create_progress_bar(
             total=total, desc="Extracting images", unit="img"
         )
+
+        # Create a folder immediately before starting the extraction
+        os.makedirs(out_dir, exist_ok=True)
 
         # Run extraction pool
         results, failed, success_count, interrupted = run_pool(
