@@ -52,7 +52,7 @@ def build_tasks(
     out_dir: str,
     run_id: str | None = None,
     overwrite: bool = False,
-    dedup: bool = False,
+    skip_dedup: bool = False,
 ) -> list[ExtractTask]:
     """
     Scan a PDF and create extraction tasks for unique images.
@@ -61,7 +61,7 @@ def build_tasks(
     run_id = run_id or str(uuid.uuid4())
 
     with fitz.open(pdf_path) as pdf:
-        xrefs, _, _ = scan_pdf_images(pdf, dedup)
+        xrefs, _, _ = scan_pdf_images(pdf, skip_dedup)
 
     return _build_extract_tasks(
         xrefs=xrefs,

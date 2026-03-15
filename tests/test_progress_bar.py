@@ -6,7 +6,6 @@ from pdfimgextract.progress_bar import (
     update_extract_stats,
     scanning_complete,
     finish_progress_bar,
-    PROGRESS_BAR_WIDTH,
 )
 
 
@@ -20,8 +19,7 @@ def test_create_progress_bar(mock_tqdm):
         desc="Test",
         colour="green",
         leave=True,
-        ncols=PROGRESS_BAR_WIDTH,
-        dynamic_ncols=False,
+        dynamic_ncols=True,
         unit=" page",
         smoothing=0.1,
     )
