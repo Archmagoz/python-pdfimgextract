@@ -38,7 +38,7 @@ def test_main_execution_flow(mock_extract, mock_get_args, mock_colorama):
         out_dir="output_folder",
         workers=4,
         overwrite=True,
-        dedup=False,
+        skip_dedup=False,
     )
 
     # Ensure the exit code from extraction is returned by main
