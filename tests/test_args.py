@@ -29,7 +29,7 @@ def test_get_args_full_positional(temp_pdf, tmp_path):
         assert args.pdf_path == temp_pdf
         assert args.out_dir == output_dir
         assert args.workers == 4
-        assert args.dedup == "xref"  # default
+        assert args.dedup == "xref"
 
 
 def test_get_args_optional_with_hash_dedup(temp_pdf, tmp_path):
