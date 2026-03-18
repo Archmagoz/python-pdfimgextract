@@ -54,7 +54,8 @@ def scan_pdf_images(pdf: fitz.Document, dedup: str) -> tuple[list[int], int, int
     try:
         if dedup.lower() == "xref":
             for page in pdf:
-                for img in page.get_images(full=True):
+                imgs: list[tuple] = page.get_images(full=True)
+                for img in imgs:
                     xref = img[0]
                     if xref not in seen_xref:
                         seen_xref.add(xref)
@@ -67,7 +68,8 @@ def scan_pdf_images(pdf: fitz.Document, dedup: str) -> tuple[list[int], int, int
 
         if dedup.lower() == "hash":
             for page in pdf:
-                for img in page.get_images(full=True):
+                imgs: list[tuple] = page.get_images(full=True)
+                for img in imgs:
                     xref = img[0]
 
                     if xref in seen_xref:
@@ -86,8 +88,8 @@ def scan_pdf_images(pdf: fitz.Document, dedup: str) -> tuple[list[int], int, int
                         xrefs.append(xref)
                         unique_images += 1
 
-                    progress.update(1)
-                    update_scan_stats(progress, unique_images, duplicates)
+                progress.update(1)
+                update_scan_stats(progress, unique_images, duplicates)
 
     except KeyboardInterrupt:
         if progress is not None:

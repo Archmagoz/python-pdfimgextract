@@ -12,13 +12,14 @@ from pdfimgextract.progress_bar import create_progress_bar, finish_progress_bar
 from pdfimgextract.cleanup import cleanup_stale_temp_files
 from pdfimgextract.build_tasks import build_tasks
 from pdfimgextract.summary import print_summary
+from pdfimgextract.datamodels import Args
 from pdfimgextract.pool import run_pool
 
 from pdfimgextract.exit_codes import EXIT_SUCCESS, EXIT_FAILURE
 from pdfimgextract.colors import RED, YELLOW, ENDC
 
 
-def extract_images_parallel(args) -> int:
+def extract_images_parallel(args: Args) -> int:
     """
     Extract images from a PDF using parallel worker processes.
     Handles KeyboardInterrupt gracefully and ensures cleanup of
