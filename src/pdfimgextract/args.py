@@ -40,8 +40,8 @@ def get_args() -> Args:
             - pdf_path (str): Path to the input PDF file.
             - out_dir (str): Output directory for extracted images.
             - workers (int): Number of parallel worker processes.
-            - overwrite (bool): Whether to overwrite existing files.
             - dedup (str): Deduplication strategy ("xref" or "hash").
+            - overwrite (bool): Whether to overwrite existing files.
 
     Exits:
         SystemExit: If validation fails or required arguments are missing.
