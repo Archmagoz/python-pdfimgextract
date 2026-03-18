@@ -94,6 +94,7 @@ def get_args() -> Args:
         "-p",
         "--parallelism",
         type=int,
+        default=8,
         help="Number of parallel worker processes (default: 8)",
     )
 
@@ -131,7 +132,7 @@ def get_args() -> Args:
     # Normalize positional arguments into flags
     args.input = args.input or args.input_pos
     args.output = args.output or args.output_pos
-    args.parallelism = args.parallelism or args.parallelism_pos or 8
+    args.parallelism = args.parallelism or args.parallelism_pos
 
     # Validation
 
