@@ -9,10 +9,4 @@ def main() -> int:
 
     args = get_args()
 
-    return extract_images_parallel(
-        pdf_path=args.input,
-        out_dir=args.output,
-        workers=args.parallelism,
-        overwrite=args.overwrite,
-        skip_dedup=args.skip_dedup,
-    )
+    return extract_images_parallel(args)

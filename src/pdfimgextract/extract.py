@@ -18,13 +18,7 @@ from pdfimgextract.exit_codes import EXIT_SUCCESS, EXIT_FAILURE
 from pdfimgextract.colors import RED, YELLOW, ENDC
 
 
-def extract_images_parallel(
-    pdf_path: str,
-    out_dir: str,
-    workers: int,
-    overwrite: bool,
-    skip_dedup: bool,
-) -> int:
+def extract_images_parallel(args) -> int:
     """
     Extract images from a PDF using parallel worker processes.
     Handles KeyboardInterrupt gracefully and ensures cleanup of
@@ -38,7 +32,7 @@ def extract_images_parallel(
 
     try:
         # Build the extraction tasks
-        tasks = build_tasks(pdf_path, out_dir, run_id, overwrite, skip_dedup)
+        tasks = build_tasks(args, run_id)
 
         total = len(tasks)
         if total == 0:
@@ -51,16 +45,11 @@ def extract_images_parallel(
         )
 
         # Create a folder immediately before starting the extraction
-        os.makedirs(out_dir, exist_ok=True)
+        os.makedirs(args.out_dir, exist_ok=True)
 
         # Run extraction pool
         results, failed, success_count, interrupted = run_pool(
-            tasks,
-            workers,
-            pdf_path,
-            stop_event,
-            progress,
-            out_dir,
+            tasks, args, stop_event, progress
         )
 
     except KeyboardInterrupt:
@@ -71,7 +60,7 @@ def extract_images_parallel(
             with suppress(Exception):
                 finish_progress_bar(progress, interrupted)
 
-        cleanup_stale_temp_files(out_dir)
+        cleanup_stale_temp_files(args.out_dir)
 
         print(f"{YELLOW}Extraction interrupted by user{ENDC}", file=sys.stderr)
         return EXIT_FAILURE
@@ -82,7 +71,7 @@ def extract_images_parallel(
             with suppress(Exception):
                 finish_progress_bar(progress, interrupted)
 
-        cleanup_stale_temp_files(out_dir)
+        cleanup_stale_temp_files(args.out_dir)
 
         print(f"{RED}Fatal error: {e}{ENDC}", file=sys.stderr)
         return EXIT_FAILURE
@@ -93,7 +82,7 @@ def extract_images_parallel(
             with suppress(Exception):
                 finish_progress_bar(progress, interrupted)
 
-        cleanup_stale_temp_files(out_dir)
+        cleanup_stale_temp_files(args.out_dir)
 
         summary = print_summary(
             success_count,
@@ -102,7 +91,7 @@ def extract_images_parallel(
             interrupted,
             results,
             total,
-            out_dir,
+            args.out_dir,
         )
 
         # Return appropriate exit code

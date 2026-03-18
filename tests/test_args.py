@@ -1,18 +1,13 @@
 import pytest
 import sys
+import os
 
 from unittest.mock import patch
+
 from pdfimgextract.args import get_args, Parser
 from pdfimgextract.exit_codes import EXIT_BY_INCORRECT_USAGE
 
 # --- Fixtures ---
-
-
-@pytest.fixture
-def mock_argv():
-    """Clear system arguments before each test to prevent leakage."""
-    with patch.object(sys, "argv", ["pdfimgextract"]):
-        yield
 
 
 @pytest.fixture
@@ -26,94 +21,125 @@ def temp_pdf(tmp_path):
 # --- Success Path Tests ---
 
 
-def test_get_args_positional_success(temp_pdf, tmp_path):
-    """Test standard positional argument parsing."""
+def test_get_args_full_positional(temp_pdf, tmp_path):
+    """Test all three positional arguments."""
     output_dir = str(tmp_path / "output")
     with patch.object(sys, "argv", ["pdfimgextract", temp_pdf, output_dir, "4"]):
         args = get_args()
-        assert args.input == temp_pdf
-        assert args.output == output_dir
-        assert args.parallelism == 4
+        assert args.pdf_path == temp_pdf
+        assert args.out_dir == output_dir
+        assert args.workers == 4
+        assert args.dedup == "xref"  # default
 
 
-def test_get_args_optional_success(temp_pdf, tmp_path):
-    """Test optional flag parsing and overwrite boolean."""
+def test_get_args_optional_with_hash_dedup(temp_pdf, tmp_path):
+    """Test optional flags and the 'hash' deduplication choice."""
     output_dir = str(tmp_path / "output")
-    cmd = ["pdfimgextract", "-i", temp_pdf, "-o", output_dir, "-p", "2", "--overwrite"]
+    cmd = [
+        "pdfimgextract",
+        "-i",
+        temp_pdf,
+        "-o",
+        output_dir,
+        "-d",
+        "hash",
+        "--overwrite",
+    ]
     with patch.object(sys, "argv", cmd):
         args = get_args()
-        assert args.input == temp_pdf
-        assert args.output == output_dir
-        assert args.parallelism == 2
+        assert args.dedup == "hash"
         assert args.overwrite is True
+        assert args.workers == 8  # fallback default
 
 
-def test_get_args_default_parallelism(temp_pdf, tmp_path):
-    """Ensure parallelism defaults to 8 if not provided."""
+def test_normalization_precedence(temp_pdf, tmp_path):
+    """Verify that optional flags override positional arguments."""
     output_dir = str(tmp_path / "output")
-    with patch.object(sys, "argv", ["pdfimgextract", temp_pdf, output_dir]):
+    # Provide 'wrong.pdf' positionally but 'temp_pdf' via flag
+    cmd = ["pdfimgextract", "wrong.pdf", "wrong_dir", "-i", temp_pdf, "-o", output_dir]
+    with patch.object(sys, "argv", cmd):
         args = get_args()
-        assert args.parallelism == 8
+        assert args.pdf_path == temp_pdf
+        assert args.out_dir == output_dir
 
 
-# --- Error Handling & Logic Branch Coverage ---
+# --- Error Handling & Branch Coverage ---
 
 
-def test_parser_custom_error_method():
-    """Verify Parser.error writes to stderr and exits with custom code."""
+def test_parser_error_output_flow():
+    """Ensure Parser.error calls print_help and exits correctly."""
     parser = Parser()
-    with patch.object(sys.stderr, "write") as mock_stderr:
+    with (
+        patch.object(sys.stderr, "write") as mock_stderr,
+        patch.object(Parser, "print_help") as mock_help,
+    ):
         with pytest.raises(SystemExit) as excinfo:
-            parser.error("test error message")
+            parser.error("invalid usage")
 
         assert excinfo.value.code == EXIT_BY_INCORRECT_USAGE
-        # Verify stderr contains the error message (ignoring color codes for simplicity)
-        written_msg = mock_stderr.call_args[0][0]
-        assert "Error: test error message" in written_msg
+        mock_help.assert_called_once()
+        # Check if the RED/ENDC constants or the word Error are in the write calls
+        any_error_msg = any(
+            "Error:" in str(call) for call in mock_stderr.call_args_list
+        )
+        assert any_error_msg
 
 
-def test_missing_input_error():
-    """Cover the 'if not args.input' branch."""
+def test_invalid_dedup_choice(temp_pdf):
+    """Trigger argparse's internal error via invalid choice."""
+    cmd = ["pdfimgextract", temp_pdf, "out", "-d", "not-a-strategy"]
+    with patch.object(sys, "argv", cmd):
+        with pytest.raises(SystemExit) as excinfo:
+            get_args()
+        assert excinfo.value.code == EXIT_BY_INCORRECT_USAGE
+
+
+def test_missing_input_logic(tmp_path):
+    """Trigger 'if not args.input'."""
     with patch.object(sys, "argv", ["pdfimgextract"]):
         with pytest.raises(SystemExit):
             get_args()
 
 
-def test_file_not_found_error(tmp_path):
-    """Cover the 'if not os.path.isfile' branch."""
-    missing_file = str(tmp_path / "ghost.pdf")
-    with patch.object(sys, "argv", ["pdfimgextract", "-i", missing_file, "-o", "out"]):
+def test_input_is_directory_error(tmp_path):
+    """Trigger 'if not os.path.isfile' by providing a directory instead of a file."""
+    dir_path = str(tmp_path / "is_a_dir")
+    os.makedirs(dir_path)
+    with patch.object(sys, "argv", ["pdfimgextract", "-i", dir_path, "-o", "out"]):
         with pytest.raises(SystemExit):
             get_args()
 
 
-def test_missing_output_error(temp_pdf):
-    """Cover the 'if not args.output' branch."""
+def test_missing_output_logic(temp_pdf):
+    """Trigger 'if not args.output'."""
     with patch.object(sys, "argv", ["pdfimgextract", "-i", temp_pdf]):
         with pytest.raises(SystemExit):
             get_args()
 
 
-def test_output_is_not_a_directory_error(temp_pdf, tmp_path):
-    """Cover the branch where output path exists but is a file."""
-    fake_dir_as_file = tmp_path / "blocker.txt"
-    fake_dir_as_file.write_text("not a directory")
-
-    cmd = ["pdfimgextract", "-i", temp_pdf, "-o", str(fake_dir_as_file)]
-    with patch.object(sys, "argv", cmd):
+def test_output_path_is_file_error(temp_pdf, tmp_path):
+    """Trigger 'if os.path.exists(args.output) and not os.path.isdir'."""
+    blocked_file = tmp_path / "file.txt"
+    blocked_file.write_text("I am a file")
+    with patch.object(sys, "argv", ["pdfimgextract", temp_pdf, str(blocked_file)]):
         with pytest.raises(SystemExit):
             get_args()
 
 
-def test_low_parallelism_error(temp_pdf, tmp_path):
-    """Cover the 'args.parallelism < 1' branch."""
-    with patch.object(sys, "argv", ["pdfimgextract", temp_pdf, "out", "0"]):
+def test_parallelism_logic_branches(temp_pdf, tmp_path):
+    """
+    Cover 'args.parallelism < 1' and ensure
+    'args.parallelism_pos or 8' logic is exercised.
+    """
+    out = str(tmp_path / "out")
+    # Case: Negative parallelism
+    with patch.object(sys, "argv", ["pdfimgextract", temp_pdf, out, "-5"]):
         with pytest.raises(SystemExit):
             get_args()
 
 
-def test_version_output():
-    """Trigger the argparse built-in version action."""
+def test_version_flag():
+    """Ensure --version exits with 0."""
     with patch.object(sys, "argv", ["pdfimgextract", "--version"]):
         with pytest.raises(SystemExit) as excinfo:
             get_args()

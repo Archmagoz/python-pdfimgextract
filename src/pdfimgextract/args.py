@@ -3,48 +3,57 @@ import os
 import sys
 
 from pdfimgextract import __version__
+from pdfimgextract.datamodels import Args
 from pdfimgextract.colors import RED, ENDC
 from pdfimgextract.exit_codes import EXIT_BY_INCORRECT_USAGE
 
 
-# Custom ArgumentParser to override the error method for better error messages
 class Parser(argparse.ArgumentParser):
+    """
+    Custom ArgumentParser with improved error output.
+
+    Overrides the default error handler to display concise,
+    user-friendly messages and exit with a custom status code.
+    """
+
     def error(self, message: str):
-        sys.stderr.write(f"{RED}Error: {message}{ENDC}\n\n")
+        sys.stderr.write(f"{RED}Error:{ENDC} {message}\n\n")
+        self.print_help(sys.stderr)
         sys.exit(EXIT_BY_INCORRECT_USAGE)
 
 
-def get_args() -> argparse.Namespace:
+def get_args() -> Args:
     """
-    Parse and validate CLI arguments.
+    Parse, normalize, and validate command-line arguments.
 
-    Supports both positional and optional flags for input PDF.
+    Supports both positional arguments and optional flags for flexibility.
 
     Positional usage:
-        pdfimgextract input.pdf images 8
+        pdfimgextract input.pdf output_dir
+        pdfimgextract input.pdf output_dir 8
 
     Optional usage:
-        pdfimgextract -i input.pdf -o images -p 8
+        pdfimgextract -i input.pdf -o output_dir -p 8
 
     Returns:
-        argparse.Namespace: Parsed and validated arguments with:
-            - input (str): Path to the input PDF file.
-            - output (str): Output directory for extracted images.
-            - parallelism (int): Number of worker processes (default: 8).
-            - version (srt): Show version number and exit.
-            - overwrite (bool): Overwrite existing files in the output folder.
-            - skip-dedup (bool): Skip deduplication of images (not recommended).
+        Args: A validated configuration object containing:
+            - pdf_path (str): Path to the input PDF file.
+            - out_dir (str): Output directory for extracted images.
+            - workers (int): Number of parallel worker processes.
+            - overwrite (bool): Whether to overwrite existing files.
+            - dedup (str): Deduplication strategy ("xref" or "hash").
 
-    Raises:
-        SystemExit: If arguments are invalid or required values are missing.
+    Exits:
+        SystemExit: If validation fails or required arguments are missing.
     """
+
     parser = Parser(
         prog="pdfimgextract",
         formatter_class=argparse.RawTextHelpFormatter,
         description=(
-            "Extract images from a PDF file quickly and efficiently.\n"
-            "Images are extracted in parallel and saved with atomic writes\n"
-            "to ensure safe and reliable output even if interrupted."
+            "Fast and reliable PDF image extraction.\n\n"
+            "Extracts embedded images from PDF files using parallel workers\n"
+            "with atomic writes to ensure safe and consistent output."
         ),
         epilog=(
             "Examples:\n"
@@ -53,78 +62,98 @@ def get_args() -> argparse.Namespace:
             "  pdfimgextract -i input.pdf -o images -p 8\n"
             "  pdfimgextract -i input.pdf -o images --overwrite\n\n"
             "Notes:\n"
-            "  - Duplicate images in the PDF are automatically skipped.\n"
-            "  - Extraction runs in parallel for maximum performance.\n"
-            "  - Default parallelism: 8 processes."
+            "  • Default parallelism: 8 workers\n"
+            "  • Default deduplication: xref\n"
+            "  • Duplicate images are skipped automatically\n"
         ),
     )
 
-    # Positional arguments
-    parser.add_argument("input_pos", nargs="?", help="input PDF file")
-    parser.add_argument("output_pos", nargs="?", help="output folder")
+    # Positional arguments (fallback when flags are not used)
+    parser.add_argument("input_pos", nargs="?", help="Input PDF file path")
+    parser.add_argument("output_pos", nargs="?", help="Output directory")
     parser.add_argument(
-        "parallelism_pos", nargs="?", type=int, help="parallelism level", default=8
+        "parallelism_pos",
+        nargs="?",
+        type=int,
+        help="Number of worker processes (default: 8)",
+        default=8,
     )
 
-    # Optional flags
-    parser.add_argument("-i", "--input", help="input PDF file")
-    parser.add_argument("-o", "--output", help="output folder")
+    # Optional arguments
+    parser.add_argument(
+        "-i",
+        "--input",
+        help="Path to the input PDF file",
+    )
+    parser.add_argument(
+        "-o",
+        "--output",
+        help="Directory where extracted images will be saved",
+    )
     parser.add_argument(
         "-p",
         "--parallelism",
         type=int,
-        help="parallelism level",
+        help="Number of parallel worker processes (default: 8)",
     )
 
-    # Version flag
+    # Version
     parser.add_argument(
         "-v",
         "--version",
         action="version",
         version=f"%(prog)s {__version__}",
-        help="show program's version number and exit",
+        help="Show program version and exit",
     )
 
-    # Overwrite flag
+    # Deduplication strategy
+    parser.add_argument(
+        "-d",
+        "--dedup",
+        choices=["xref", "hash"],
+        default="xref",
+        help=(
+            "Deduplication method (default: xref)\n"
+            "  xref - skip duplicates using PDF references (fast)\n"
+            "  hash - compare image content using hashing (slower, more thorough)"
+        ),
+    )
+
+    # Overwrite
     parser.add_argument(
         "--overwrite",
         action="store_true",
-        help="overwrite existing files in the output directory",
-    )
-
-    # deduplication skip flag (not recommended)
-    parser.add_argument(
-        "--skip-dedup",
-        action="store_true",
-        help=(
-            "skip deduplication of images (not recommended)\n"
-            "this will result in duplicate images being extracted\n"
-            "most usefull for testing raw extraction performance with benchmarks"
-            "or if you already know the pdf don't have any duplicate"
-        ),
+        help="Overwrite existing files in the output directory",
     )
 
     args = parser.parse_args()
 
-    # Map positional arguments to their corresponding optional flags if not provided
+    # Normalize positional arguments into flags
     args.input = args.input or args.input_pos
     args.output = args.output or args.output_pos
-    args.parallelism = args.parallelism or args.parallelism_pos
+    args.parallelism = args.parallelism or args.parallelism_pos or 8
 
-    # Validate arguments
+    # Validation
+
     if not args.input:
-        parser.error("Input PDF not specified.")
+        parser.error("Missing input PDF file.")
 
     if not os.path.isfile(args.input):
-        parser.error(f"Input file '{args.input}' does not exist or is not a file.")
+        parser.error(f"Input file not found or invalid: '{args.input}'")
 
     if not args.output:
-        parser.error("Output folder not specified.")
+        parser.error("Missing output directory.")
 
     if os.path.exists(args.output) and not os.path.isdir(args.output):
-        parser.error(f"Output path '{args.output}' exists and is not a directory.")
+        parser.error(f"Output path exists but is not a directory: '{args.output}'")
 
     if args.parallelism < 1:
-        parser.error("Parallelism level should be >= 1")
+        parser.error("Parallelism must be at least 1.")
 
-    return args
+    return Args(
+        pdf_path=args.input,
+        out_dir=args.output,
+        workers=args.parallelism,
+        overwrite=args.overwrite,
+        dedup=args.dedup,
+    )

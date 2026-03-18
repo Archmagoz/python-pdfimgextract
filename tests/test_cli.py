@@ -1,58 +1,52 @@
+import pytest
 from unittest.mock import patch, MagicMock
 from pdfimgextract.cli import main
+from pdfimgextract.exit_codes import EXIT_SUCCESS, EXIT_FAILURE
+
+# --- CLI Tests ---
 
 
 @patch("pdfimgextract.cli.colorama_init")
 @patch("pdfimgextract.cli.get_args")
 @patch("pdfimgextract.cli.extract_images_parallel")
-def test_main_execution_flow(mock_extract, mock_get_args, mock_colorama):
-    """
-    Verify that main() initializes colorama, retrieves arguments,
-    and calls the extraction logic with correct parameters.
-    """
-    # 1. Setup Mock Arguments
-    mock_args = MagicMock()
-    mock_args.input = "input.pdf"
-    mock_args.output = "output_folder"
-    mock_args.parallelism = 4
-    mock_args.overwrite = True
-    mock_args.skip_dedup = False
-    mock_get_args.return_value = mock_args
+def test_main_success_flow(mock_extract, mock_get_args, mock_colorama):
+    """Verify that main initializes colorama, gets args, and returns success."""
+    # Setup mocks
+    mock_args_obj = MagicMock()
+    mock_get_args.return_value = mock_args_obj
+    mock_extract.return_value = EXIT_SUCCESS
 
-    # 2. Setup Mock Return Value for extraction
-    mock_extract.return_value = 0
+    # Execute
+    result = main()
 
-    # 3. Call main
-    exit_code = main()
-
-    # 4. Assertions
-    # Ensure colorama was initialized
+    # Assertions
     mock_colorama.assert_called_once()
-
-    # Ensure arguments were fetched
     mock_get_args.assert_called_once()
-
-    # Ensure the extraction function was called with the mapped arguments
-    mock_extract.assert_called_once_with(
-        pdf_path="input.pdf",
-        out_dir="output_folder",
-        workers=4,
-        overwrite=True,
-        skip_dedup=False,
-    )
-
-    # Ensure the exit code from extraction is returned by main
-    assert exit_code == 0
+    mock_extract.assert_called_once_with(mock_args_obj)
+    assert result == EXIT_SUCCESS
 
 
-@patch("pdfimgextract.cli.colorama_init")
 @patch("pdfimgextract.cli.get_args")
 @patch("pdfimgextract.cli.extract_images_parallel")
-def test_main_returns_error_code(mock_extract, mock_get_args, mock_colorama):
-    """Verify that main() propagates non-zero exit codes."""
+def test_main_failure_flow(mock_extract, mock_get_args):
+    """Verify that main propagates failure exit codes from the extractor."""
     mock_get_args.return_value = MagicMock()
-    mock_extract.return_value = 1
+    mock_extract.return_value = EXIT_FAILURE
 
-    exit_code = main()
+    result = main()
 
-    assert exit_code == 1
+    assert result == EXIT_FAILURE
+
+
+@patch("pdfimgextract.cli.get_args")
+def test_main_arg_parse_error(mock_get_args):
+    """
+    Verify behavior if get_args raises SystemExit (standard argparse behavior).
+    Note: get_args internally calls sys.exit on error, so we catch it here.
+    """
+    mock_get_args.side_effect = SystemExit(2)
+
+    with pytest.raises(SystemExit) as excinfo:
+        main()
+
+    assert excinfo.value.code == 2

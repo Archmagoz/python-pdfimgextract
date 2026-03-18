@@ -2,7 +2,7 @@ import fitz
 import uuid
 
 from pdfimgextract.dedup import load_existing_stems, scan_pdf_images
-from pdfimgextract.datamodels import ExtractTask
+from pdfimgextract.datamodels import ExtractTask, Args
 
 from pdfimgextract.colors import ENDC, YELLOW
 
@@ -48,11 +48,8 @@ def _build_extract_tasks(
 
 
 def build_tasks(
-    pdf_path: str,
-    out_dir: str,
+    args: Args,
     run_id: str | None = None,
-    overwrite: bool = False,
-    skip_dedup: bool = False,
 ) -> list[ExtractTask]:
     """
     Scan a PDF and create extraction tasks for unique images.
@@ -60,12 +57,12 @@ def build_tasks(
 
     run_id = run_id or str(uuid.uuid4())
 
-    with fitz.open(pdf_path) as pdf:
-        xrefs, _, _ = scan_pdf_images(pdf, skip_dedup)
+    with fitz.open(args.pdf_path) as pdf:
+        xrefs, _, _ = scan_pdf_images(pdf, args.dedup)
 
     return _build_extract_tasks(
         xrefs=xrefs,
-        out_dir=out_dir,
+        out_dir=args.out_dir,
         run_id=run_id,
-        overwrite=overwrite,
+        overwrite=args.overwrite,
     )

@@ -43,161 +43,95 @@ Example:
 pdfimgextract manga.pdf output 16
 ```
 
-Optional flags:
+Optional usage (flags):
+
+```bash
+pdfimgextract -i input.pdf -o output_dir -p 8
+pdfimgextract -i input.pdf -o output_dir -d hash
+pdfimgextract -i input.pdf -o output_dir --overwrite
+```
+
+### Arguments
 
 ```
--i / --input
--o / --output
--p / --parallelism
+-i / --input         Path to input PDF
+-o / --output        Output directory
+-p / --parallelism   Number of worker processes (default: 8)
+-d / --dedup         Deduplication method: xref (default) or hash (precise but slower)
+--overwrite          Overwrite existing files
 ```
 
-If the number of processes is not specified, the tool defaults to **8 worker processes**.
+If not specified, the tool defaults to:
+- **8 workers**
+- **xref deduplication**
 
 ---
 
-## 📊 Performance Benchmark
-
-To evaluate the scalability of the multiprocessing implementation, a benchmark was conducted using a large, high-resolution PDF.
+## 📊 Performance & Benchmark
 
 ### 🖥️ Test Environment
 
 • **OS**: Windows 11  
-• **CPU**: 28 Cores  
-• **Input File**: 491 MB PDF (514.956.001 bytes)  
-• **Extracted Images**: 230 images  
-• **Image Size Range**: ~2MB – 10MB
-
-### Benchmark Results
-
-| Proc | Avg (s) | Median | Std Dev | RAM (MB) | Speedup | Eff. |
-|-----|------|------|------|------|------|------|
-| 1  | 111.88 | 111.84 | 0.09 | 349 | 1.00x | 100% |
-| 2  | 56.98  | 57.06  | 0.34 | 626 | 1.96x | 98% |
-| 4  | 32.41  | 32.49  | 0.12 | 1159 | 3.45x | 86% |
-| 8  | 20.16  | 20.17  | 0.04 | 2254 | 5.55x | 69% |
-| 16 | 14.24  | 14.28  | 0.08 | 4423 | 7.86x | 49% |
-| 32 | 11.41 | 11.41 | 0.03 | 7309 | 9.81x | 31% |
-| 64 | 11.67 | 11.67 | 0.06 | 9306 | 9.59x | 15% |
+• **CPU**: 28 cores  
+• **Input File**: 491 MB PDF  
+• **Extracted Images**: 230  
+• **Image Size Range**: ~2MB – 10MB  
 
 ---
 
-## 📈 Performance Analysis
+### 📈 Results
 
-### Scaling Behavior
-
-The benchmark shows **near-linear scaling at low process counts**, followed by a performance plateau as system limits are reached.
-
-### Near-linear Speedup (1 → 2 processes)
-
-Execution time drops from:
-
-```
-111.88s → 56.98s
-```
-
-Efficiency:
-
-```
-98.2%
-```
-
-This indicates that the multiprocessing overhead (process creation, IPC, scheduling) is extremely small relative to the workload.
+| Proc | Time (s) | Speedup | Efficiency | RAM (MB) |
+|------|---------|--------|-----------|---------|
+| 1  | 111.88 | 1.00x | 100% | 349 |
+| 2  | 56.98  | 1.96x | 98%  | 626 |
+| 4  | 32.41  | 3.45x | 86%  | 1159 |
+| 8  | 20.16  | 5.55x | 69%  | 2254 |
+| 16 | 14.24  | 7.86x | 49%  | 4423 |
+| 32 | 11.41  | 9.81x | 31%  | 7309 |
+| 64 | 11.67  | 9.59x | 15%  | 9306 |
 
 ---
 
-### Peak Throughput
+### 🧠 Analysis
 
-The fastest execution time occurs at **32 processes**:
+**Scaling**
+- Near-linear scaling up to ~4 processes  
+- Strong gains up to ~16  
+- Performance plateaus around ~32  
 
-```
-11.41 seconds
-Speedup: 9.81x
-```
+**CPU Efficiency**
+- Very high at low parallelism (~98% at 2 workers)  
+- Gradual drop due to scheduling and contention  
+- Diminishing returns at 64 and beyond workers  
 
-At this point, CPU resources are almost fully saturated and the workload is maximally parallelized.
+**Memory Usage**
+- RAM scales almost linearly with process count  
+- Each worker holds its own decoding state  
+- Large images amplify memory consumption  
 
-Beyond this point, performance gains disappear due to system-level constraints.
+Examples:
+- 8 workers → ~2.2 GB  
+- 32 workers → ~7.3 GB  
+- 64 workers → ~9.3 GB  
 
----
-
-### CPU Oversubscription
-
-Running **64 processes on a 28-core CPU** causes a slight performance regression:
-
-```
-11.41s → 11.67s
-```
-
-This occurs due to:
-
-- Increased **context switching**
-- OS scheduler overhead
-- Reduced cache locality
-- Worker contention for shared resources
-
-When the number of active processes exceeds the number of physical cores, the operating system must constantly swap running tasks, reducing overall efficiency.
+**I/O Bottleneck**
+- Parallel writes saturate disk bandwidth  
+- Causes worker stalls at high process counts  
+- Main limiter beyond ~32 workers  
 
 ---
 
-## ⚙️ Efficiency Analysis
+### 🏁 Optimal Range
 
-Efficiency is defined as:
+**Recommended configuration:**
 
 ```
-Efficiency = Speedup / Number of Processes
+8 – 16 workers
 ```
 
-It measures how effectively each additional CPU contributes to performance.
-
-Observed efficiency:
-
-| Processes | Efficiency |
-|----------|-----------|
-| 2 | 98.2% |
-| 4 | 86.3% |
-| 8 | 69.4% |
-| 16 | 49.1% |
-| 32 | 30.7% |
-| 64 | 15.0% |
-
-This decline is expected and is explained by **Amdahl's Law**.
-
----
-
-## 💽 I/O Bottlenecks
-
-Although image extraction itself is largely CPU-bound, writing **230 large images (2–10MB)** to disk introduces an additional bottleneck.
-
-When many workers attempt to write simultaneously:
-
-- Disk write buffers become saturated
-- I/O queue latency increases
-- Workers stall waiting for filesystem operations
-
-This explains why increasing processes beyond ~32 yields no additional speedup.
-
----
-
-## 🏁 Final Performance Summary
-
-| Metric | Value |
-|------|------|
-| Baseline (1 process) | 111.88s |
-| Best Runtime | 11.41s |
-| Maximum Speedup | **9.81x** |
-| Peak Efficiency | **98.2%** |
-| Optimal Range | **8 – 16 processes** |
-
----
-
-## 🚀 Conclusion
-
-The benchmark results demonstrate that **python-pdfimgextract effectively transforms a heavy serial workload into a scalable parallel pipeline**.
-
-By leveraging multiprocessing and efficient I/O handling, the tool achieves:
-
-- **~10x performance improvement**
-- High CPU utilization
-- Predictable scaling behavior
-
-This makes it well-suited for processing **large PDFs containing hundreds of high-resolution images**.
+Best balance between:
+- Speed
+- Efficiency
+- Memory usage
+- I/O pressure

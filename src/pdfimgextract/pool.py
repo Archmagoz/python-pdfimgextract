@@ -5,6 +5,7 @@ from multiprocessing.pool import Pool
 from pdfimgextract.worker import init_worker, worker_extract, ExtractResult
 from pdfimgextract.cleanup import remove_file_safely
 from pdfimgextract.commit import finalize_result
+from pdfimgextract.datamodels import Args
 
 
 def handle_interrupt(pool, progress, stop_event):
@@ -26,7 +27,7 @@ def handle_interrupt(pool, progress, stop_event):
         pool.join()
 
 
-def run_pool(tasks, workers, pdf_path, stop_event, progress, out_dir):
+def run_pool(tasks: list, args: Args, stop_event, progress):
     """
     Execute extraction tasks using a multiprocessing pool.
 
@@ -64,9 +65,9 @@ def run_pool(tasks, workers, pdf_path, stop_event, progress, out_dir):
 
     # Create worker pool with per-process PDF initialization
     pool = Pool(
-        processes=workers,
+        processes=args.workers,
         initializer=init_worker,
-        initargs=(pdf_path, stop_event),
+        initargs=(args.pdf_path, stop_event),
     )
 
     try:
@@ -89,7 +90,7 @@ def run_pool(tasks, workers, pdf_path, stop_event, progress, out_dir):
                 )
             else:
                 # Finalize the worker result (move temp file, validate, etc.)
-                result, _ = finalize_result(raw_result, out_dir=out_dir)
+                result, _ = finalize_result(raw_result, out_dir=args.out_dir)
 
             results.append(result)
 

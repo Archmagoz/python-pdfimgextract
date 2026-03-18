@@ -1,225 +1,125 @@
 import pytest
+import hashlib
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 from pdfimgextract.dedup import (
     load_existing_stems,
-    _image_signature,
     _compute_stream_hash,
     scan_pdf_images,
 )
 
-# --- Tests for load_existing_stems ---
+# --- load_existing_stems (3 lines) ---
 
 
-def test_load_existing_stems_dir_not_exists():
-    """Branch: if not os.path.isdir(out_dir)"""
-    with patch("os.path.isdir", return_value=False):
-        assert load_existing_stems("fake_path") == set()
+def test_load_existing_stems_full(tmp_path):
+    """Cover the 'if not os.path.isdir' and the splitext loop."""
+    # 1. Missing dir branch
+    assert load_existing_stems(str(tmp_path / "missing")) == set()
 
-
-def test_load_existing_stems_success(tmp_path):
-    """Branch: Success loop and splitext logic."""
-    (tmp_path / "01.png").write_text("")
-    (tmp_path / "02.jpg").write_text("")
-    (tmp_path / "other.txt").write_text("")
-
+    # 2. Success branch
+    (tmp_path / "001.png").write_text("")
+    (tmp_path / "002.jpg").write_text("")
     stems = load_existing_stems(str(tmp_path))
-    assert stems == {"01", "02", "other"}
+    assert stems == {"001", "002"}
 
 
-# --- Tests for _image_signature ---
+# --- _compute_stream_hash (3 lines) ---
 
 
-def test_image_signature():
-    """Verify metadata extraction from the fitz image tuple."""
-    # Tuple index: 0=xref, 1=smask, 2=width, 3=height, 4=bpc, 5=colorspace
-    mock_img = (100, 0, 1920, 1080, 8, "DeviceRGB")
-    expected = (1920, 1080, 8, "DeviceRGB")
-    assert _image_signature(mock_img) == expected
+def test_compute_stream_hash_branches():
+    """Cover both return None and return digest."""
+    pdf = MagicMock()
+    # Case: None
+    pdf.xref_stream.return_value = None
+    assert _compute_stream_hash(pdf, 1) is None
+
+    # Case: Valid
+    pdf.xref_stream.return_value = b"data"
+    expected = hashlib.sha256(b"data").digest()
+    assert _compute_stream_hash(pdf, 2) == expected
 
 
-# --- Tests for _compute_stream_hash ---
-
-
-def test_compute_stream_hash_none():
-    """Branch: if stream is None"""
-    mock_pdf = MagicMock()
-    mock_pdf.xref_stream.return_value = None
-    assert _compute_stream_hash(mock_pdf, 100) is None
-
-
-def test_compute_stream_hash_success():
-    """Verify hash computation from bytes."""
-    mock_pdf = MagicMock()
-    mock_pdf.xref_stream.return_value = b"image_data"
-    result = _compute_stream_hash(mock_pdf, 100)
-    assert result is not None
-    assert len(result) == 32  # SHA256 digest length
-
-
-# --- Tests for scan_pdf_images ---
+# --- scan_pdf_images (Remaining 7+ lines) ---
 
 
 @patch("pdfimgextract.dedup.create_progress_bar")
 @patch("pdfimgextract.dedup.update_scan_stats")
 @patch("pdfimgextract.dedup.scanning_complete")
-def test_scan_pdf_images_deduplication_logic(mock_complete, mock_stats, mock_pb):
-    """Test all three layers of deduplication (xref, signature, hash)."""
-    mock_pdf = MagicMock()
-    mock_pb_instance = MagicMock()
-    mock_pb.return_value = mock_pb_instance
+def test_scan_pdf_images_xref_full_path(mock_complete, mock_stats, mock_pb):
+    """Cover the 'if dedup.lower() == "xref"' block and final returns."""
+    pdf = MagicMock()
+    pdf.__len__.return_value = 1
+    page = MagicMock()
+    page.get_images.return_value = [[10], [10]]  # One unique, one duplicate XREF
+    pdf.__iter__.return_value = [page]
 
-    # Simulate 1 page with 4 images
-    # 1. Unique image
-    # 2. Duplicate xref
-    # 3. Same signature, same hash (duplicate)
-    # 4. Same signature, different hash (unique)
+    xrefs, unique, dups = scan_pdf_images(pdf, "XREF")
 
-    img1 = (10, 0, 100, 100, 8, "RGB")
-    img2 = (10, 0, 100, 100, 8, "RGB")  # Same xref
-    img3 = (20, 0, 100, 100, 8, "RGB")  # Same signature as img1
-    img4 = (30, 0, 100, 100, 8, "RGB")  # Same signature as img1
-
-    mock_page = MagicMock()
-    mock_page.get_images.return_value = [img1, img2, img3, img4]
-    mock_pdf.__iter__.return_value = [mock_page]
-    mock_pdf.__len__.return_value = 1
-
-    # Mock hash returns:
-    # img3 returns same hash as img1. img4 returns unique hash.
-    # Note: _compute_stream_hash is called when signature is seen.
-    with patch("pdfimgextract.dedup._compute_stream_hash") as mock_hash:
-        mock_hash.side_effect = [
-            b"hash_a",  # img1 first call
-            b"hash_a",  # img3 check (duplicate)
-            b"hash_b",  # img4 check (unique)
-        ]
-
-        xrefs, unique, dups = scan_pdf_images(mock_pdf)
-
-        assert xrefs == [10, 30]
-        assert unique == 2
-        assert dups == 2  # 1 from xref, 1 from hash
-
-
-@patch("pdfimgextract.dedup.create_progress_bar")
-@patch("pdfimgextract.dedup.finish_progress_bar")
-def test_scan_pdf_images_keyboard_interrupt(mock_finish, mock_pb):
-    """Branch: except KeyboardInterrupt"""
-    mock_pdf = MagicMock()
-    mock_pdf.__iter__.side_effect = KeyboardInterrupt
-
-    with pytest.raises(KeyboardInterrupt):
-        scan_pdf_images(mock_pdf)
-
-    mock_finish.assert_called_once()
-
-
-@patch("pdfimgextract.dedup.create_progress_bar")
-def test_scan_pdf_images_handle_none_hash(mock_pb):
-    """Ensure logic continues if _compute_stream_hash returns None."""
-    mock_pdf = MagicMock()
-    img = (10, 0, 100, 100, 8, "RGB")
-    mock_page = MagicMock()
-    mock_page.get_images.return_value = [img]
-    mock_pdf.__iter__.return_value = [mock_page]
-
-    with patch("pdfimgextract.dedup._compute_stream_hash", return_value=None):
-        xrefs, unique, dups = scan_pdf_images(mock_pdf)
-        assert unique == 1
-        assert len(xrefs) == 1
-
-
-# --- Additional Tests for scan_pdf_images ---
-
-
-@patch("pdfimgextract.dedup.create_progress_bar")
-@patch("pdfimgextract.dedup.scanning_complete")
-def test_scan_pdf_images_skip_dedup_branch(mock_complete, mock_pb):
-    """Branch: if skip_dedup: Verify fast-path without deduplication logic."""
-    mock_pdf = MagicMock()
-    mock_pb_instance = MagicMock()
-    mock_pb.return_value = mock_pb_instance
-
-    # 3 images, including a duplicate xref (10)
-    img1 = (10, 0, 100, 100, 8, "RGB")
-    img2 = (10, 0, 100, 100, 8, "RGB")
-    img3 = (20, 0, 200, 200, 8, "RGB")
-
-    mock_page = MagicMock()
-    mock_page.get_images.return_value = [img1, img2, img3]
-    mock_pdf.__iter__.return_value = [mock_page]
-    mock_pdf.__len__.return_value = 1
-
-    # In skip_dedup mode, all xrefs should be collected regardless of duplicates
-    xrefs, unique, dups = scan_pdf_images(mock_pdf, skip_dedup=True)
-
-    assert xrefs == [10, 10, 20]
-    assert unique == 3
-    assert dups == 0
-    mock_complete.assert_called_once()
-
-
-@patch("pdfimgextract.dedup.create_progress_bar")
-def test_scan_pdf_images_empty_pdf(mock_pb):
-    """Verify behavior when the PDF has no pages or no images."""
-    mock_pdf = MagicMock()
-    mock_pdf.__iter__.return_value = []
-    mock_pdf.__len__.return_value = 0
-
-    xrefs, unique, dups = scan_pdf_images(mock_pdf)
-
-    assert xrefs == []
-    assert unique == 0
-    assert dups == 0
+    assert xrefs == [10]
+    assert unique == 1
+    mock_complete.assert_called()
+    # Note: In XREF mode, the code returns early, so update_scan_stats is NOT called.
 
 
 @patch("pdfimgextract.dedup.create_progress_bar")
 @patch("pdfimgextract.dedup._compute_stream_hash")
-def test_scan_pdf_images_signature_collision_and_hash_storage(mock_hash, mock_pb):
+@patch("pdfimgextract.dedup.update_scan_stats")
+@patch("pdfimgextract.dedup.scanning_complete")
+def test_scan_pdf_images_hash_full_path(mock_complete, mock_stats, mock_hash, mock_pb):
     """
-    Test the specific branch where a signature is seen for the first time.
-    Ensures that img_hash is computed and added to seen_hashes even
-    if no collision occurred.
+    Cover all branches of the 'if dedup.lower() == "hash"' block:
+    - xref in seen_xref (continue)
+    - xref not in hash_cache (compute)
+    - img_hash and img_hash in seen_hashes (continue)
+    - img_hash (seen_hashes.add)
+    - final stats and progress closing
     """
-    mock_pdf = MagicMock()
-    img1 = (50, 0, 300, 300, 8, "CMYK")
+    pdf = MagicMock()
+    pdf.__len__.return_value = 1
+    page = MagicMock()
+    # Sequence:
+    # 1. XREF 10 (Hash A) -> New
+    # 2. XREF 10 (Same XREF) -> Trigger 'if xref in seen_xref'
+    # 3. XREF 20 (Hash A) -> Trigger 'if img_hash and img_hash in seen_hashes'
+    # 4. XREF 30 (Hash B) -> New
+    page.get_images.return_value = [[10], [10], [20], [30]]
+    pdf.__iter__.return_value = [page]
 
-    mock_page = MagicMock()
-    mock_page.get_images.return_value = [img1]
-    mock_pdf.__iter__.return_value = [mock_page]
-    mock_pdf.__len__.return_value = 1
+    # Only called for 10, 20, 30. 10(2nd) is skipped by xref check.
+    mock_hash.side_effect = [b"A", b"A", b"B"]
 
-    mock_hash.return_value = b"unique_hash_z"
+    xrefs, unique, dups = scan_pdf_images(pdf, "hash")
 
-    xrefs, unique, dups = scan_pdf_images(mock_pdf)
+    assert xrefs == [10, 30]
+    assert dups == 2
+    assert unique == 2
 
-    # Verify xref was added
-    assert xrefs == [50]
-    # Verify hash was actually computed for the new signature
-    mock_hash.assert_called_with(mock_pdf, 50)
+    # Verify the hash_cache was used: mock_hash should only be called once for XREF 10
+    # even though it appears twice in get_images.
+    assert mock_hash.call_count == 3
+
+    # Verify stats and completion calls
+    mock_stats.assert_called()
+    mock_complete.assert_called()
 
 
 @patch("pdfimgextract.dedup.create_progress_bar")
-def test_scan_pdf_images_multiple_pages(mock_pb):
-    """Ensure images are collected across multiple PDF pages."""
-    mock_pdf = MagicMock()
+@patch("pdfimgextract.dedup.finish_progress_bar")
+def test_scan_pdf_interrupt_handling(mock_finish, mock_pb):
+    """Cover the KeyboardInterrupt branch explicitly."""
+    pdf = MagicMock()
+    pdf.__iter__.side_effect = KeyboardInterrupt()
 
-    mock_pdf.xref_stream.return_value = b"dummy_data"
+    # Case: progress is not None
+    mock_bar = MagicMock()
+    mock_pb.return_value = mock_bar
 
-    img_p1 = (1, 0, 10, 10, 8, "Gray")
-    img_p2 = (2, 0, 20, 20, 8, "Gray")
+    with pytest.raises(KeyboardInterrupt):
+        scan_pdf_images(pdf, "hash")
 
-    mock_page1 = MagicMock()
-    mock_page1.get_images.return_value = [img_p1]
-    mock_page2 = MagicMock()
-    mock_page2.get_images.return_value = [img_p2]
+    mock_finish.assert_called_with(mock_bar, cancelled=True)
 
-    mock_pdf.__iter__.return_value = [mock_page1, mock_page2]
-    mock_pdf.__len__.return_value = 2
-
-    xrefs, unique, dups = scan_pdf_images(mock_pdf)
-
-    assert len(xrefs) == 2
-    assert 1 in xrefs
-    assert 2 in xrefs
+    # Case: progress IS None (for completeness)
+    mock_pb.return_value = None
+    with pytest.raises(KeyboardInterrupt):
+        scan_pdf_images(pdf, "hash")

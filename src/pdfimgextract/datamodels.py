@@ -2,6 +2,15 @@ from dataclasses import dataclass
 
 
 @dataclass(slots=True, frozen=True)
+class Args:
+    pdf_path: str
+    out_dir: str
+    workers: int
+    overwrite: bool
+    dedup: str
+
+
+@dataclass(slots=True, frozen=True)
 class ExtractTask:
     xref: int
     out_dir: str
