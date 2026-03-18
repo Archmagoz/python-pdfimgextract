@@ -94,7 +94,6 @@ def get_args() -> Args:
         "-p",
         "--parallelism",
         type=int,
-        default=8,
         help="Number of parallel worker processes (default: 8)",
     )
 
