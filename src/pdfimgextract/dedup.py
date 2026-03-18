@@ -60,13 +60,14 @@ def scan_pdf_images(pdf: fitz.Document, dedup: str) -> tuple[list[int], int, int
                     if xref not in seen_xref:
                         seen_xref.add(xref)
                         xrefs.append(xref)
+                        unique_images += 1
+                    else:
+                        duplicates += 1
+
                 progress.update(1)
+                update_scan_stats(progress, unique_images, duplicates)
 
-            scanning_complete(progress)
-            progress.close()
-            return xrefs, len(xrefs), 0
-
-        if dedup.lower() == "hash":
+        elif dedup.lower() == "hash":
             for page in pdf:
                 imgs: list[tuple] = page.get_images(full=True)
                 for img in imgs:
