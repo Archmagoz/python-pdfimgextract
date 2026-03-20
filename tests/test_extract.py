@@ -1,9 +1,11 @@
 import pytest
 
 from unittest.mock import MagicMock, patch
-from pdfimgextract.extract import extract_images_parallel
-from pdfimgextract.exit_codes import EXIT_SUCCESS, EXIT_FAILURE
+
 from pdfimgextract.datamodels import Args
+from pdfimgextract.extract import extract_images_parallel
+from pdfimgextract.exit_codes import EXIT_SUCCESS, EXIT_FAILURE, EXIT_BY_USER
+
 
 # --- Fixtures ---
 
@@ -91,7 +93,7 @@ def test_extract_keyboard_interrupt_branch(
 
     result = extract_images_parallel(mock_args)
 
-    assert result == EXIT_FAILURE
+    assert result == EXIT_BY_USER
     mock_cleanup.assert_called_once()
     captured = capsys.readouterr()
     assert "interrupted by user" in captured.err

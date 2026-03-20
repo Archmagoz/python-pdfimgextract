@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from multiprocessing.pool import Pool
 
-from pdfimgextract.worker import init_worker, worker_extract, ExtractResult
+from pdfimgextract.datamodels import Args, ExtractResult
+from pdfimgextract.worker import init_worker, worker_extract
 from pdfimgextract.cleanup import remove_file_safely
 from pdfimgextract.commit import finalize_result
-from pdfimgextract.datamodels import Args
 
 
 def handle_interrupt(pool, progress, stop_event):

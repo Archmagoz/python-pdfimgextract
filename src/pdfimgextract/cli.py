@@ -1,7 +1,7 @@
 from colorama import init as colorama_init
 
-from pdfimgextract.args import get_args
 from pdfimgextract.datamodels import Args
+from pdfimgextract.args import get_args
 from pdfimgextract.extract import extract_images_parallel
 
 

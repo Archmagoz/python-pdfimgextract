@@ -2,8 +2,8 @@ import argparse
 import os
 import sys
 
-from pdfimgextract import __version__
 from pdfimgextract.datamodels import Args
+from pdfimgextract import __version__
 from pdfimgextract.colors import RED, ENDC
 from pdfimgextract.exit_codes import EXIT_BY_INCORRECT_USAGE
 
@@ -61,10 +61,6 @@ def get_args() -> Args:
             "  pdfimgextract input.pdf images 8\n"
             "  pdfimgextract -i input.pdf -o images -p 8\n"
             "  pdfimgextract -i input.pdf -o images --overwrite\n\n"
-            "Notes:\n"
-            "  • Default parallelism: 8 workers\n"
-            "  • Default deduplication: xref\n"
-            "  • Duplicate images are skipped automatically\n"
         ),
     )
 
@@ -97,15 +93,6 @@ def get_args() -> Args:
         help="Number of parallel worker processes (default: 8)",
     )
 
-    # Version
-    parser.add_argument(
-        "-v",
-        "--version",
-        action="version",
-        version=f"%(prog)s {__version__}",
-        help="Show program version and exit",
-    )
-
     # Deduplication strategy
     parser.add_argument(
         "-d",
@@ -124,6 +111,14 @@ def get_args() -> Args:
         "--overwrite",
         action="store_true",
         help="Overwrite existing files in the output directory",
+    )
+
+    # Version
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+        help="Show program version and exit",
     )
 
     args = parser.parse_args()
