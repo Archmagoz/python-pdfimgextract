@@ -2,8 +2,8 @@ import argparse
 import os
 import sys
 
-from pdfimgextract.datamodels import Args
 from pdfimgextract import __version__
+from pdfimgextract.models.datamodels import Args
 from pdfimgextract.constants.colors import RED, ENDC
 from pdfimgextract.constants.exit_codes import EXIT_BY_INCORRECT_USAGE
 

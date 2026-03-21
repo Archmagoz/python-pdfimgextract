@@ -3,7 +3,7 @@ import fitz
 
 from contextlib import suppress
 
-from pdfimgextract.progress_bar import (
+from pdfimgextract.utils.progress_bar import (
     create_progress_bar,
     update_scan_stats,
     scanning_complete,

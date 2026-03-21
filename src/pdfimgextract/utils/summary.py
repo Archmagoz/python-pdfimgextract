@@ -1,4 +1,4 @@
-from pdfimgextract.datamodels import ExtractionSummary
+from pdfimgextract.models.datamodels import ExtractionSummary
 from pdfimgextract.constants.colors import YELLOW, GREEN, ENDC
 
 

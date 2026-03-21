@@ -1,5 +1,5 @@
-from pdfimgextract.datamodels import Args
-from pdfimgextract.extract import extract_images_parallel as _extract
+from pdfimgextract.models.datamodels import Args
+from pdfimgextract.core.extract import extract_images_parallel as _extract
 
 
 def extract_images_parallel(

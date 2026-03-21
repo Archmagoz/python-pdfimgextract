@@ -8,13 +8,12 @@ import os
 import sys
 import uuid
 
-from pdfimgextract.progress_bar import create_progress_bar, finish_progress_bar
-from pdfimgextract.filesystem import cleanup_stale_temp_files
-from pdfimgextract.build_tasks import build_tasks
-from pdfimgextract.summary import print_summary
-from pdfimgextract.datamodels import Args
-from pdfimgextract.pool import run_pool
-
+from pdfimgextract.core.build_tasks import build_tasks
+from pdfimgextract.core.pool import run_pool
+from pdfimgextract.models.datamodels import Args
+from pdfimgextract.utils.progress_bar import create_progress_bar, finish_progress_bar
+from pdfimgextract.utils.filesystem import cleanup_stale_temp_files
+from pdfimgextract.utils.summary import print_summary
 from pdfimgextract.constants.exit_codes import EXIT_SUCCESS, EXIT_FAILURE, EXIT_BY_USER
 from pdfimgextract.constants.colors import RED, YELLOW, ENDC
 
