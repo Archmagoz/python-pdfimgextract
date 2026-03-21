@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 from pdfimgextract.cli import main
-from pdfimgextract.exit_codes import EXIT_SUCCESS, EXIT_FAILURE
+from pdfimgextract.constants.exit_codes import EXIT_SUCCESS, EXIT_FAILURE
 
 # --- CLI Tests ---
 

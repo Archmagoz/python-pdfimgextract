@@ -4,7 +4,7 @@ from multiprocessing.pool import Pool
 
 from pdfimgextract.datamodels import Args, ExtractResult
 from pdfimgextract.worker import init_worker, worker_extract
-from pdfimgextract.cleanup import remove_file_safely
+from pdfimgextract.filesystem import remove_file_safely
 from pdfimgextract.commit import finalize_result
 
 

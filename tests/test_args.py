@@ -5,7 +5,7 @@ import os
 from unittest.mock import patch
 
 from pdfimgextract.args import get_args, Parser
-from pdfimgextract.exit_codes import EXIT_BY_INCORRECT_USAGE
+from pdfimgextract.constants.exit_codes import EXIT_BY_INCORRECT_USAGE
 
 # --- Fixtures ---
 

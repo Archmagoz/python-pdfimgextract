@@ -1,7 +1,7 @@
 import os
 
 from pdfimgextract.datamodels import ExtractResult
-from pdfimgextract.cleanup import remove_file_safely
+from pdfimgextract.filesystem import remove_file_safely
 
 
 def finalize_result(

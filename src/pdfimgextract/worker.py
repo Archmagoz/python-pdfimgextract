@@ -15,7 +15,7 @@ from typing import Protocol
 from contextlib import suppress
 
 from pdfimgextract.datamodels import ExtractTask, ExtractResult
-from pdfimgextract.cleanup import remove_file_safely
+from pdfimgextract.filesystem import remove_file_safely
 
 
 # ============================================================

@@ -1,6 +1,5 @@
 import hashlib
 import fitz
-import os
 
 from contextlib import suppress
 
@@ -10,23 +9,6 @@ from pdfimgextract.progress_bar import (
     scanning_complete,
     finish_progress_bar,
 )
-
-
-def load_existing_stems(out_dir: str) -> set[str]:
-    """
-    Collect existing file stems from the destination folder.
-    Used to avoid recreating files when overwrite is disabled.
-    """
-    stems: set[str] = set()
-
-    if not os.path.isdir(out_dir):
-        return stems
-
-    for name in os.listdir(out_dir):
-        stem, _ = os.path.splitext(name)
-        stems.add(stem)
-
-    return stems
 
 
 def _compute_stream_hash(pdf: fitz.Document, xref: int) -> bytes | None:

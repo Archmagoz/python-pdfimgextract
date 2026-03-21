@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from pdfimgextract.datamodels import Args
 from pdfimgextract.extract import extract_images_parallel
-from pdfimgextract.exit_codes import EXIT_SUCCESS, EXIT_FAILURE, EXIT_BY_USER
+from pdfimgextract.constants.exit_codes import EXIT_SUCCESS, EXIT_FAILURE, EXIT_BY_USER
 
 
 # --- Fixtures ---

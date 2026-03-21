@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from pdfimgextract.cleanup import remove_file_safely, cleanup_stale_temp_files
+from pdfimgextract.filesystem import remove_file_safely, cleanup_stale_temp_files
 
 # --- Tests for remove_file_safely ---
 

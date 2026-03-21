@@ -4,8 +4,8 @@ import sys
 
 from pdfimgextract.datamodels import Args
 from pdfimgextract import __version__
-from pdfimgextract.colors import RED, ENDC
-from pdfimgextract.exit_codes import EXIT_BY_INCORRECT_USAGE
+from pdfimgextract.constants.colors import RED, ENDC
+from pdfimgextract.constants.exit_codes import EXIT_BY_INCORRECT_USAGE
 
 
 class Parser(argparse.ArgumentParser):

@@ -1,5 +1,5 @@
 from pdfimgextract.datamodels import ExtractionSummary
-from pdfimgextract.colors import YELLOW, GREEN, ENDC
+from pdfimgextract.constants.colors import YELLOW, GREEN, ENDC
 
 
 def _print_failed(failed):
