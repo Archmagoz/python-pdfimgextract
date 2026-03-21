@@ -41,11 +41,11 @@ def run_pool(tasks: list, args: Args, stop_event, progress):
 
     Args:
         tasks: Iterable of ExtractTask objects.
-        workers: Number of worker processes.
         pdf_path: Path to the source PDF file.
+        workers: Number of worker processes.
+        out_dir: Directory where extracted images will be written.
         stop_event: Multiprocessing Event used to signal cancellation.
         progress: tqdm progress bar instance.
-        out_dir: Directory where extracted images will be written.
 
     Returns:
         tuple:

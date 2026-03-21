@@ -129,7 +129,6 @@ def get_args() -> Args:
     args.parallelism = args.parallelism or args.parallelism_pos
 
     # Validation
-
     if not args.input:
         parser.error("Missing input PDF file.")
 
