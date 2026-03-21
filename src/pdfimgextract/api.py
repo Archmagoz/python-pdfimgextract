@@ -8,7 +8,7 @@ def extract_images_parallel(
     *,
     workers: int = 8,
     overwrite: bool = False,
-    dedup: str = "hash",
+    dedup: str = "xref",
 ) -> int:
     args = Args(
         pdf_path=pdf_path,
