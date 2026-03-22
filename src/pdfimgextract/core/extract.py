@@ -30,6 +30,11 @@ def extract_images_parallel(args: Args) -> int:
     interrupted = False
     stop_event = Event()
 
+    total = 0
+    success_count = 0
+    failed = []
+    results = []
+
     try:
         # Build the extraction tasks
         tasks = build_tasks(args, run_id)
@@ -55,47 +60,35 @@ def extract_images_parallel(args: Args) -> int:
     except KeyboardInterrupt:
         interrupted = True
         stop_event.set()
-
-        if progress is not None:
-            with suppress(Exception):
-                finish_progress_bar(progress, interrupted)
-
-        cleanup_stale_temp_files(args.out_dir)
-
         print(f"{YELLOW}Extraction interrupted by user{ENDC}", file=sys.stderr)
         return EXIT_BY_USER
 
     except Exception as e:
         # Any other fatal exception
-        if progress is not None:
-            with suppress(Exception):
-                finish_progress_bar(progress, interrupted)
-
-        cleanup_stale_temp_files(args.out_dir)
-
         print(f"{RED}Fatal error: {e}{ENDC}", file=sys.stderr)
         return EXIT_FAILURE
 
-    else:
-        # Normal completion
+    finally:
+        # Unified cleanup for all scenarios (success, error, or interrupt)
         if progress is not None:
             with suppress(Exception):
                 finish_progress_bar(progress, interrupted)
 
         cleanup_stale_temp_files(args.out_dir)
 
-        summary = print_summary(
-            success_count,
-            len(failed),
-            failed,
-            interrupted,
-            results,
-            total,
-            args.out_dir,
-        )
+    # Final summary and exit logic
+    summary = print_summary(
+        success_count,
+        len(failed),
+        failed,
+        interrupted,
+        results,
+        total,
+        args.out_dir,
+    )
 
-        # Return appropriate exit code
-        if summary.interrupted or summary.failed > 0:
-            return EXIT_FAILURE
+    # Return appropriate exit code
+    if summary.interrupted or summary.failed > 0:
+        return EXIT_FAILURE
 
-        return EXIT_SUCCESS
+    return EXIT_SUCCESS
