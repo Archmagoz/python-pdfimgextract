@@ -23,47 +23,42 @@ from pdfimgextract.utils.filesystem import remove_file_safely
 # ============================================================
 
 
-def cancelled_result(task: ExtractTask) -> ExtractResult:
+def result(
+    task: ExtractTask,
+    *,
+    ok: bool,
+    cancelled: bool = False,
+    ext: str | None = None,
+    temp_path: str | None = None,
+    error: str | None = None,
+) -> ExtractResult:
     """
-    Create a result object representing a cancelled extraction task.
+    Generic helper to create an ExtractResult.
 
     Args:
-        task (ExtractTask): Task that was cancelled.
+        task (ExtractTask): Task associated with the result.
+        ok (bool): Whether the operation succeeded.
+        cancelled (bool, optional): Whether the task was cancelled.
+        ext (str | None, optional): File extension.
+        temp_path (str | None, optional): Temporary file path.
+        error (str | None, optional): Error message.
 
     Returns:
-        ExtractResult: Result marked as cancelled.
+        ExtractResult: Result object.
     """
     return ExtractResult(
-        ok=False,
-        cancelled=True,
+        ok=ok,
+        cancelled=cancelled,
         xref=task.xref,
         stem=task.stem,
-        ext=None,
-        temp_path=None,
-        error="cancelled",
-    )
-
-
-def failure_result(task: ExtractTask, error: str) -> ExtractResult:
-    """
-    Create a result object representing a failed extraction task.
-
-    Args:
-        task (ExtractTask): Task that failed.
-        error (str): Error message describing the failure.
-
-    Returns:
-        ExtractResult: Result marked as failed.
-    """
-    return ExtractResult(
-        ok=False,
-        cancelled=False,
-        xref=task.xref,
-        stem=task.stem,
-        ext=None,
-        temp_path=None,
+        ext=ext,
+        temp_path=temp_path,
         error=error,
     )
+
+
+def cancelled_result(task: ExtractTask) -> ExtractResult:
+    return result(task, ok=False, cancelled=True, error="cancelled")
 
 
 # ============================================================
@@ -87,9 +82,8 @@ class SharedEventProtocol(Protocol):
 PDF_DOC: fitz.Document | None = None
 STOP_EVENT: SharedEventProtocol | None = None
 
-
 # ============================================================
-# Worker lifecycle
+# Utils
 # ============================================================
 
 
@@ -105,6 +99,15 @@ def close_worker_pdf() -> None:
         with suppress(Exception):
             PDF_DOC.close()
         PDF_DOC = None
+
+
+def is_cancelled() -> bool:
+    return STOP_EVENT is not None and STOP_EVENT.is_set()
+
+
+# ============================================================
+# Worker lifecycle
+# ============================================================
 
 
 def init_worker(pdf_path: str, stop_event: SharedEventProtocol) -> None:
@@ -162,7 +165,7 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
         if STOP_EVENT is None:
             raise RuntimeError("Worker stop event is not initialized.")
 
-        if STOP_EVENT.is_set():
+        if is_cancelled():
             return cancelled_result(task)
 
         if PDF_DOC is None:
@@ -183,7 +186,7 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
         ext = raw_ext.lower()
 
         # Check again for cancellation before writing to disk
-        if STOP_EVENT.is_set():
+        if is_cancelled():
             return cancelled_result(task)
 
         # Temporary file used to ensure atomic writes
@@ -196,21 +199,13 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
             f.write(image_bytes)
 
         # Remove partial file if cancellation happened during write
-        if STOP_EVENT.is_set():
+        if is_cancelled():
             remove_file_safely(temp_path)
             return cancelled_result(task)
 
-        return ExtractResult(
-            ok=True,
-            cancelled=False,
-            xref=task.xref,
-            stem=task.stem,
-            ext=ext,
-            temp_path=temp_path,
-            error=None,
-        )
+        return result(task, ok=True, ext=ext, temp_path=temp_path)
 
     except Exception as e:
         # Ensure temporary file is removed on failure
         remove_file_safely(temp_path)
-        return failure_result(task, str(e))
+        return result(task, ok=False, error=str(e))
