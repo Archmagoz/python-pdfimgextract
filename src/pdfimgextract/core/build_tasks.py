@@ -39,9 +39,7 @@ def _build_extract_tasks(
         )
 
     if skipped:
-        print(
-            f"{YELLOW}Overwrite is disabled, if you want to overwrite existing files, use --overwrite flag{ENDC}"
-        )
+        print(f"{YELLOW}Existing files found. Use --overwrite to overwrite them.{ENDC}")
         print(f"{YELLOW}Skipping {skipped} existing files in destination folder{ENDC}")
 
     return tasks
