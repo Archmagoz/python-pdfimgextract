@@ -1,22 +1,18 @@
 import pytest
-
-from unittest.mock import patch, MagicMock, mock_open
-
-# Access the module directly to force-reset global variables
 import pdfimgextract.core.worker as worker
+from unittest.mock import patch, MagicMock, mock_open
 from pdfimgextract.core.worker import (
     init_worker,
     worker_extract,
     close_worker_pdf,
     cancelled_result,
-    failure_result,
     ExtractTask,
 )
 
 
 @pytest.fixture(autouse=True)
 def reset_globals():
-    """Hard reset of global state between every test."""
+    """Hard reset of global state between every test to prevent leakage."""
     worker.PDF_DOC = None
     worker.STOP_EVENT = None
     yield
@@ -31,8 +27,15 @@ def create_task():
 # --- Result Helpers ---
 def test_result_helpers():
     task = create_task()
+    # Test the dedicated helper
     assert cancelled_result(task).cancelled is True
-    assert failure_result(task, "err").ok is False
+    assert cancelled_result(task).ok is False
+
+    # Test the generic result helper directly
+    res = worker.result(task, ok=True, ext="png", temp_path="tmp/path")
+    assert res.ok is True
+    assert res.ext == "png"
+    assert res.temp_path == "tmp/path"
 
 
 # --- Lifecycle ---
@@ -40,9 +43,13 @@ def test_result_helpers():
 @patch("atexit.register")
 @patch("signal.signal")
 def test_init_worker(mock_sig, mock_exit, mock_fitz):
-    init_worker("test.pdf", MagicMock())
+    mock_event = MagicMock()  # Satisfies SharedEventProtocol
+    init_worker("test.pdf", mock_event)
+
     assert worker.PDF_DOC is not None
+    assert worker.STOP_EVENT == mock_event
     mock_sig.assert_called_once()
+    mock_exit.assert_called_once_with(close_worker_pdf)
 
 
 def test_close_worker_pdf_logic():
@@ -51,106 +58,111 @@ def test_close_worker_pdf_logic():
     close_worker_pdf()
     assert worker.PDF_DOC is None
 
-    # Line 165: Exception path (suppress)
+    # Exception path: Ensure it suppresses errors during PDF closure
     mock_doc = MagicMock()
-    mock_doc.close.side_effect = Exception("fail")
+    mock_doc.close.side_effect = Exception("Fitz cleanup failure")
     worker.PDF_DOC = mock_doc
     close_worker_pdf()  # Should not raise
     assert worker.PDF_DOC is None
 
 
 # --- Extraction Logic ---
-def test_worker_guards():
-    """Covers RuntimeError branches for uninitialized state."""
+def test_worker_uninitialized_guards():
+    """Covers RuntimeError branches when init_worker wasn't called or failed."""
     task = create_task()
 
     # 1. No STOP_EVENT
     res = worker_extract(task)
     assert res.ok is False
-    assert res.error is not None  # Type guard for the linter
-    assert "stop event" in res.error
+    assert "stop event" in (res.error or "")
 
-    # 2. No PDF_DOC
-    import pdfimgextract.core.worker as worker
-
-    worker.STOP_EVENT = MagicMock(is_set=lambda: False)
+    # 2. No PDF_DOC (but event exists)
+    worker.STOP_EVENT = MagicMock()
+    worker.STOP_EVENT.is_set.return_value = False
     res = worker_extract(task)
     assert res.ok is False
-    assert res.error is not None  # Type guard for the linter
-    assert "PDF document" in res.error
+    assert "PDF document" in (res.error or "")
 
 
-def test_worker_data_validation():
-    """Covers empty data and extension RuntimeErrors with type guards."""
+def test_worker_data_validation_errors():
+    """Covers cases where PyMuPDF returns malformed or empty data."""
     worker.STOP_EVENT = MagicMock(is_set=lambda: False)
     worker.PDF_DOC = MagicMock()
     task = create_task()
 
-    # 1. Empty image data
+    # Case: Empty image data
     worker.PDF_DOC.extract_image.return_value = {"image": None, "ext": "png"}
-    res_data = worker_extract(task)
-    assert res_data.error is not None  # <--- Type Guard
-    assert "empty image data" in res_data.error
+    res = worker_extract(task)
+    assert "empty image data" in (res.error or "")
 
-    # 2. Empty extension
-    worker.PDF_DOC.extract_image.return_value = {"image": b"...", "ext": ""}
-    res_ext = worker_extract(task)
-    assert res_ext.error is not None  # <--- Type Guard
-    assert "empty file extension" in res_ext.error
+    # Case: Empty/missing extension
+    worker.PDF_DOC.extract_image.return_value = {"image": b"fake_data", "ext": ""}
+    res = worker_extract(task)
+    assert "empty file extension" in (res.error or "")
 
 
 @patch("pdfimgextract.core.worker.remove_file_safely")
-def test_worker_cancellation_logic(mock_remove):
-    worker.STOP_EVENT = MagicMock()
+def test_worker_cancellation_checkpoints(mock_remove):
+    """Verifies that the worker respects the STOP_EVENT at various stages."""
     worker.PDF_DOC = MagicMock()
-    worker.PDF_DOC.extract_image.return_value = {"image": b"d", "ext": "png"}
+    worker.PDF_DOC.extract_image.return_value = {"image": b"data", "ext": "png"}
     task = create_task()
 
-    # Point 1: Before extraction
-    worker.STOP_EVENT.is_set.return_value = True
+    # Mock event to satisfy Protocol
+    mock_event = MagicMock()
+    worker.STOP_EVENT = mock_event
+
+    # Point 1: Cancelled immediately
+    mock_event.is_set.return_value = True
     assert worker_extract(task).cancelled is True
 
-    # Point 2: Before write
-    worker.STOP_EVENT.is_set.side_effect = [False, True]
+    # Point 2: Cancelled after extraction but before file write
+    # is_set() is called: once at start, once before write
+    mock_event.is_set.side_effect = [False, True]
     assert worker_extract(task).cancelled is True
 
-    # Point 3: After write (Line 186 cleanup)
-    worker.STOP_EVENT.is_set.side_effect = [False, False, True]
+    # Point 3: Cancelled after file write (Cleanup logic)
+    # is_set() is called: start, before write, after write
+    mock_event.is_set.side_effect = [False, False, True]
     with patch("builtins.open", mock_open()):
         res = worker_extract(task)
         assert res.cancelled is True
+        # Verify it cleaned up the partial file
         mock_remove.assert_called()
 
 
-# --- THE KILLER TEST FOR LINE 186 ---
 @patch("pdfimgextract.core.worker.remove_file_safely")
-def test_coverage_line_186_catch_all(mock_remove):
-    """
-    Forces Line 186 by ensuring temp_path is set, then crashing.
-    """
+def test_extraction_exception_cleanup(mock_remove):
+    """Forces an exception during write to ensure temp_path is cleaned up."""
     worker.STOP_EVENT = MagicMock(is_set=lambda: False)
     worker.PDF_DOC = MagicMock()
-    # Return valid dictionary so we pass lines 167-171
     worker.PDF_DOC.extract_image.return_value = {"image": b"data", "ext": "png"}
-
     task = create_task()
 
-    # Crash at open() -> Line 180.
-    # Because Line 175 (temp_path assignment) already finished, 186 MUST run.
-    with patch("builtins.open", side_effect=RuntimeError("Force Line 186")):
+    # Trigger exception during the 'with open' block
+    with patch("builtins.open", side_effect=IOError("Disk Full")):
         res = worker_extract(task)
 
     assert res.ok is False
-    assert res.error is not None
-    assert "Force Line 186" in res.error
+    assert "Disk Full" in (res.error or "")
+    # Ensure cleanup was called because temp_path was already defined
     mock_remove.assert_called_once()
 
 
-@patch("builtins.open", mock_open())
-def test_worker_extract_success():
+@patch("builtins.open", new_callable=mock_open)
+def test_worker_extract_success(mock_file):
+    """Standard success path."""
     worker.STOP_EVENT = MagicMock(is_set=lambda: False)
     worker.PDF_DOC = MagicMock()
-    worker.PDF_DOC.extract_image.return_value = {"image": b"data", "ext": "png"}
-    res = worker_extract(create_task())
+    worker.PDF_DOC.extract_image.return_value = {
+        "image": b"actual_bytes",
+        "ext": "jpeg",
+    }
+
+    task = create_task()
+    res = worker_extract(task)
+
     assert res.ok is True
-    assert res.temp_path is not None
+    assert res.ext == "jpeg"
+    assert ".part" in (res.temp_path or "")
+    mock_file().write.assert_called_once_with(b"actual_bytes")
