@@ -23,7 +23,7 @@ from pdfimgextract.utils.filesystem import remove_file_safely
 # ============================================================
 
 
-def result(
+def _result(
     task: ExtractTask,
     *,
     ok: bool,
@@ -57,8 +57,8 @@ def result(
     )
 
 
-def cancelled_result(task: ExtractTask) -> ExtractResult:
-    return result(task, ok=False, cancelled=True, error="cancelled")
+def _cancelled_result(task: ExtractTask) -> ExtractResult:
+    return _result(task, ok=False, cancelled=True, error="cancelled")
 
 
 # ============================================================
@@ -87,7 +87,7 @@ STOP_EVENT: SharedEventProtocol | None = None
 # ============================================================
 
 
-def close_worker_pdf() -> None:
+def _close_worker_pdf() -> None:
     """
     Close the PDF document held by the worker process.
 
@@ -101,7 +101,7 @@ def close_worker_pdf() -> None:
         PDF_DOC = None
 
 
-def is_cancelled() -> bool:
+def _is_cancelled() -> bool:
     return STOP_EVENT is not None and STOP_EVENT.is_set()
 
 
@@ -132,7 +132,7 @@ def init_worker(pdf_path: str, stop_event: SharedEventProtocol) -> None:
     STOP_EVENT = stop_event
 
     # Ensure the PDF is closed when the worker exits
-    atexit.register(close_worker_pdf)
+    atexit.register(_close_worker_pdf)
 
 
 # ============================================================
@@ -165,8 +165,8 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
         if STOP_EVENT is None:
             raise RuntimeError("Worker stop event is not initialized.")
 
-        if is_cancelled():
-            return cancelled_result(task)
+        if _is_cancelled():
+            return _cancelled_result(task)
 
         if PDF_DOC is None:
             raise RuntimeError("Worker PDF document is not initialized.")
@@ -186,8 +186,8 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
         ext = raw_ext.lower()
 
         # Check again for cancellation before writing to disk
-        if is_cancelled():
-            return cancelled_result(task)
+        if _is_cancelled():
+            return _cancelled_result(task)
 
         # Temporary file used to ensure atomic writes
         temp_path = os.path.join(
@@ -199,13 +199,13 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
             f.write(image_bytes)
 
         # Remove partial file if cancellation happened during write
-        if is_cancelled():
+        if _is_cancelled():
             remove_file_safely(temp_path)
-            return cancelled_result(task)
+            return _cancelled_result(task)
 
-        return result(task, ok=True, ext=ext, temp_path=temp_path)
+        return _result(task, ok=True, ext=ext, temp_path=temp_path)
 
     except Exception as e:
         # Ensure temporary file is removed on failure
         remove_file_safely(temp_path)
-        return result(task, ok=False, error=str(e))
+        return _result(task, ok=False, error=str(e))

@@ -18,7 +18,6 @@ class Parser(argparse.ArgumentParser):
 
     def error(self, message: str):
         sys.stderr.write(f"{RED}Error:{ENDC} {message}\n\n")
-        self.print_help(sys.stderr)
         sys.exit(EXIT_BY_INCORRECT_USAGE)
 
 

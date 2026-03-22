@@ -8,7 +8,7 @@ from pdfimgextract.models.datamodels import Args, ExtractResult
 from pdfimgextract.utils.filesystem import remove_file_safely
 
 
-def handle_interrupt(pool, progress, stop_event):
+def _handle_interrupt(pool, progress, stop_event):
     """
     Handle a CTRL-C interruption during pool execution.
 
@@ -108,6 +108,6 @@ def run_pool(tasks: list, args: Args, stop_event, progress):
 
     except KeyboardInterrupt:
         interrupted = True
-        handle_interrupt(pool, progress, stop_event)
+        _handle_interrupt(pool, progress, stop_event)
 
     return results, failed, success_count, interrupted
