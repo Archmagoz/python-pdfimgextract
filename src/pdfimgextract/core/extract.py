@@ -30,10 +30,10 @@ def extract_images_parallel(args: Args) -> int:
     interrupted = False
     stop_event = Event()
 
-    total = 0
-    success_count = 0
-    failed = []
-    results = []
+    total: int = 0
+    success_count: int = 0
+    failed: list = []
+    results: list = []
 
     try:
         # Build the extraction tasks
