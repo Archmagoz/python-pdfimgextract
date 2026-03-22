@@ -9,6 +9,7 @@ def _print_failed(failed):
     Args:
         failed: Iterable of ExtractResult objects that failed.
     """
+
     for r in failed:
         print(f"{YELLOW}- image #{r.stem} (xref={r.xref}): {r.error}{ENDC}")
 

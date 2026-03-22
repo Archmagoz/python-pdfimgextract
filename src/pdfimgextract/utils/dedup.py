@@ -16,6 +16,7 @@ def _compute_stream_hash(pdf: fitz.Document, xref: int) -> bytes | None:
     Compute a SHA256 hash from the raw image stream.
     Returns None if the stream cannot be read.
     """
+
     stream = pdf.xref_stream(xref)
     if stream is None:
         return None
