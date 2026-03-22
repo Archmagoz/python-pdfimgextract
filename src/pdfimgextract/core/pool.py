@@ -15,6 +15,7 @@ def _handle_interrupt(pool, progress, stop_event):
     Signals workers to stop via the stop_event, updates the progress bar
     to indicate cancellation, and forcefully terminates the worker pool.
     """
+
     stop_event.set()
 
     if progress is not None:
@@ -36,23 +37,6 @@ def run_pool(tasks: list, args: Args, stop_event, progress):
     - dispatching tasks
     - collecting results
     - handling cancellation/interrupts
-
-    Higher-level error handling and exit codes are managed by the caller.
-
-    Args:
-        tasks: Iterable of ExtractTask objects.
-        pdf_path: Path to the source PDF file.
-        workers: Number of worker processes.
-        out_dir: Directory where extracted images will be written.
-        stop_event: Multiprocessing Event used to signal cancellation.
-        progress: tqdm progress bar instance.
-
-    Returns:
-        tuple:
-            results (list[ExtractResult]): All processed task results.
-            failed (list[ExtractResult]): Tasks that failed (excluding cancellations).
-            success_count (int): Number of successful extractions.
-            interrupted (bool): True if execution was interrupted by CTRL-C.
     """
 
     pool: Pool | None = None

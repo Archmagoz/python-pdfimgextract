@@ -46,6 +46,7 @@ def _result(
     Returns:
         ExtractResult: Result object.
     """
+
     return ExtractResult(
         ok=ok,
         cancelled=cancelled,
@@ -94,6 +95,7 @@ def _close_worker_pdf() -> None:
     This function is registered with `atexit` to ensure that the
     document is always closed when the worker exits.
     """
+
     global PDF_DOC
     if PDF_DOC is not None:
         with suppress(Exception):
@@ -123,6 +125,7 @@ def init_worker(pdf_path: str, stop_event: SharedEventProtocol) -> None:
         pdf_path (str): Path to the PDF file.
         stop_event (SharedEventProtocol): Shared event used to signal cancellation.
     """
+
     global PDF_DOC, STOP_EVENT
 
     # Ignore CTRL-C in worker processes (handled by the parent)
@@ -157,6 +160,7 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
     Returns:
         ExtractResult: Result of the extraction attempt.
     """
+
     global PDF_DOC, STOP_EVENT
 
     temp_path: str | None = None
