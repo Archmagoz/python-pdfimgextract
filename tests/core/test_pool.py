@@ -4,7 +4,7 @@ from unittest.mock import patch, MagicMock
 
 from dataclasses import replace
 
-from pdfimgextract.core.pool import run_pool, handle_interrupt
+from pdfimgextract.core.pool import run_pool, _handle_interrupt
 from pdfimgextract.models.datamodels import Args, ExtractResult
 
 
@@ -34,13 +34,13 @@ class TestPool:
 
     def test_handle_interrupt(self):
         """
-        Verify that handle_interrupt signals the event and terminates the pool.
+        Verify that _handle_interrupt signals the event and terminates the pool.
         """
         mock_pool = MagicMock()
         mock_progress = MagicMock()
         mock_event = MagicMock()
 
-        handle_interrupt(mock_pool, mock_progress, mock_event)
+        _handle_interrupt(mock_pool, mock_progress, mock_event)
 
         mock_event.set.assert_called_once()
         mock_progress.refresh.assert_called_once()
@@ -113,7 +113,7 @@ class TestPool:
         mock_remove.assert_called_once_with(dummy_result.temp_path)
 
     @patch("pdfimgextract.core.pool.Pool")
-    @patch("pdfimgextract.core.pool.handle_interrupt")
+    @patch("pdfimgextract.core.pool._handle_interrupt")
     def test_run_pool_keyboard_interrupt(self, mock_handle, mock_pool_class, mock_args):
         """
         Test the try/except block for KeyboardInterrupt.

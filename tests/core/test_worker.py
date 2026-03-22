@@ -4,8 +4,8 @@ from unittest.mock import patch, MagicMock, mock_open
 from pdfimgextract.core.worker import (
     init_worker,
     worker_extract,
-    close_worker_pdf,
-    cancelled_result,
+    _close_worker_pdf,
+    _cancelled_result,
     ExtractTask,
 )
 
@@ -28,11 +28,11 @@ def create_task():
 def test_result_helpers():
     task = create_task()
     # Test the dedicated helper
-    assert cancelled_result(task).cancelled is True
-    assert cancelled_result(task).ok is False
+    assert _cancelled_result(task).cancelled is True
+    assert _cancelled_result(task).ok is False
 
     # Test the generic result helper directly
-    res = worker.result(task, ok=True, ext="png", temp_path="tmp/path")
+    res = worker._result(task, ok=True, ext="png", temp_path="tmp/path")
     assert res.ok is True
     assert res.ext == "png"
     assert res.temp_path == "tmp/path"
@@ -49,20 +49,20 @@ def test_init_worker(mock_sig, mock_exit, mock_fitz):
     assert worker.PDF_DOC is not None
     assert worker.STOP_EVENT == mock_event
     mock_sig.assert_called_once()
-    mock_exit.assert_called_once_with(close_worker_pdf)
+    mock_exit.assert_called_once_with(_close_worker_pdf)
 
 
-def test_close_worker_pdf_logic():
+def test__close_worker_pdf_logic():
     # Success path
     worker.PDF_DOC = MagicMock()
-    close_worker_pdf()
+    _close_worker_pdf()
     assert worker.PDF_DOC is None
 
     # Exception path: Ensure it suppresses errors during PDF closure
     mock_doc = MagicMock()
     mock_doc.close.side_effect = Exception("Fitz cleanup failure")
     worker.PDF_DOC = mock_doc
-    close_worker_pdf()  # Should not raise
+    _close_worker_pdf()  # Should not raise
     assert worker.PDF_DOC is None
 
 
