@@ -10,13 +10,16 @@ from pdfimgextract.constants.exit_codes import EXIT_BY_INCORRECT_USAGE
 
 class Parser(argparse.ArgumentParser):
     """
-    Custom ArgumentParser with improved error output.
+    Custom ArgumentParser with improved error reporting.
 
-    Overrides the default error handler to display concise,
-    user-friendly messages and exit with a custom status code.
+    Overrides the default error method to provide concise,
+    user-friendly messages and exit with a consistent status code.
     """
 
     def error(self, message: str):
+        """
+        Print a formatted error message and terminate execution.
+        """
         sys.stderr.write(f"{RED}Error:{ENDC} {message}\n\n")
         sys.exit(EXIT_BY_INCORRECT_USAGE)
 
@@ -35,15 +38,15 @@ def get_args() -> Args:
         pdfimgextract -i input.pdf -o output_dir -p 8
 
     Returns:
-        Args: A validated configuration object containing:
-            - pdf_path (str): Path to the input PDF file.
-            - out_dir (str): Output directory for extracted images.
-            - workers (int): Number of parallel worker processes.
-            - dedup (str): Deduplication strategy ("xref" or "hash").
-            - overwrite (bool): Whether to overwrite existing files.
+        Args: Validated configuration object containing:
+            - pdf_path (str): Input PDF file path
+            - out_dir (str): Output directory
+            - workers (int): Number of worker processes
+            - dedup (str): Deduplication strategy ("xref" or "hash")
+            - overwrite (bool): Whether to overwrite existing files
 
-    Exits:
-        SystemExit: If validation fails or required arguments are missing.
+    Raises:
+        SystemExit: If parsing or validation fails.
     """
 
     parser = Parser(
@@ -63,7 +66,7 @@ def get_args() -> Args:
         ),
     )
 
-    # Positional arguments (fallback when flags are not used)
+    # Positional arguments (used when flags are omitted)
     parser.add_argument("input_pos", nargs="?", help="Input PDF file path")
     parser.add_argument("output_pos", nargs="?", help="Output directory")
     parser.add_argument(
@@ -105,14 +108,14 @@ def get_args() -> Args:
         ),
     )
 
-    # Overwrite
+    # Overwrite behavior
     parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite existing files in the output directory",
     )
 
-    # Version
+    # Version flag
     parser.add_argument(
         "--version",
         action="version",
@@ -122,12 +125,12 @@ def get_args() -> Args:
 
     args = parser.parse_args()
 
-    # Normalize positional arguments into flags
+    # Normalize positional arguments into their flag equivalents
     args.input = args.input or args.input_pos
     args.output = args.output or args.output_pos
     args.parallelism = args.parallelism or args.parallelism_pos
 
-    # Validation
+    # Validate required inputs
     if not args.input:
         parser.error("Missing input PDF file.")
 

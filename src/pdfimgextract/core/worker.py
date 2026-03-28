@@ -2,8 +2,8 @@
 Worker process responsible for extracting images from a PDF.
 
 Each worker keeps its own open PDF document instance and processes
-extraction tasks in parallel. Extraction writes to temporary files
-to ensure atomic output and safe cancellation.
+tasks independently. Extraction writes to temporary files to ensure
+atomic output and safe cancellation.
 """
 
 import fitz
@@ -33,18 +33,7 @@ def _result(
     error: str | None = None,
 ) -> ExtractResult:
     """
-    Generic helper to create an ExtractResult.
-
-    Args:
-        task (ExtractTask): Task associated with the result.
-        ok (bool): Whether the operation succeeded.
-        cancelled (bool, optional): Whether the task was cancelled.
-        ext (str | None, optional): File extension.
-        temp_path (str | None, optional): Temporary file path.
-        error (str | None, optional): Error message.
-
-    Returns:
-        ExtractResult: Result object.
+    Build a normalized ExtractResult from a task.
     """
 
     return ExtractResult(
@@ -59,6 +48,9 @@ def _result(
 
 
 def _cancelled_result(task: ExtractTask) -> ExtractResult:
+    """
+    Shortcut for a cancelled task result.
+    """
     return _result(task, ok=False, cancelled=True, error="cancelled")
 
 
@@ -69,19 +61,19 @@ def _cancelled_result(task: ExtractTask) -> ExtractResult:
 
 class SharedEventProtocol(Protocol):
     """
-    Protocol defining the minimal interface required for a shared stop event.
+    Minimal interface for a shared stop event.
 
-    Used to allow compatibility with multiprocessing.Event without importing
-    the concrete implementation in this module.
+    Allows decoupling from multiprocessing.Event implementation.
     """
 
     def is_set(self) -> bool: ...
     def set(self) -> None: ...
 
 
-# Shared worker state
+# Per-process state (initialized once per worker)
 PDF_DOC: fitz.Document | None = None
 STOP_EVENT: SharedEventProtocol | None = None
+
 
 # ============================================================
 # Utils
@@ -90,10 +82,7 @@ STOP_EVENT: SharedEventProtocol | None = None
 
 def _close_worker_pdf() -> None:
     """
-    Close the PDF document held by the worker process.
-
-    This function is registered with `atexit` to ensure that the
-    document is always closed when the worker exits.
+    Close the worker's PDF document on process exit.
     """
 
     global PDF_DOC
@@ -104,6 +93,9 @@ def _close_worker_pdf() -> None:
 
 
 def _is_cancelled() -> bool:
+    """
+    Check whether a global cancellation signal was triggered.
+    """
     return STOP_EVENT is not None and STOP_EVENT.is_set()
 
 
@@ -114,27 +106,23 @@ def _is_cancelled() -> bool:
 
 def init_worker(pdf_path: str, stop_event: SharedEventProtocol) -> None:
     """
-    Initialize worker process state.
+    Initialize per-worker state.
 
-    Each worker opens its own PDF document instance and receives a
-    shared stop event used to coordinate cancellation.
-
-    SIGINT is ignored so the parent process can handle interrupts.
-
-    Args:
-        pdf_path (str): Path to the PDF file.
-        stop_event (SharedEventProtocol): Shared event used to signal cancellation.
+    Each worker:
+    - opens its own PDF document
+    - receives a shared stop event
+    - ignores SIGINT (handled by parent)
     """
 
     global PDF_DOC, STOP_EVENT
 
-    # Ignore CTRL-C in worker processes (handled by the parent)
+    # Prevent workers from handling CTRL+C directly
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     PDF_DOC = fitz.open(pdf_path)
     STOP_EVENT = stop_event
 
-    # Ensure the PDF is closed when the worker exits
+    # Ensure cleanup on process exit
     atexit.register(_close_worker_pdf)
 
 
@@ -145,20 +133,9 @@ def init_worker(pdf_path: str, stop_event: SharedEventProtocol) -> None:
 
 def worker_extract(task: ExtractTask) -> ExtractResult:
     """
-    Extract a single image from the PDF.
+    Extract a single image and write it to a temporary file.
 
-    The worker retrieves the image using its xref identifier,
-    writes it to a temporary file, and returns a result describing
-    the outcome of the extraction.
-
-    The function periodically checks the shared stop event so the
-    extraction pipeline can cancel quickly if requested.
-
-    Args:
-        task (ExtractTask): Extraction task containing image metadata.
-
-    Returns:
-        ExtractResult: Result of the extraction attempt.
+    Returns a result describing success, failure, or cancellation.
     """
 
     global PDF_DOC, STOP_EVENT
@@ -166,16 +143,18 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
     temp_path: str | None = None
 
     try:
+        # Validate worker state
         if STOP_EVENT is None:
             raise RuntimeError("Worker stop event is not initialized.")
-
-        if _is_cancelled():
-            return _cancelled_result(task)
 
         if PDF_DOC is None:
             raise RuntimeError("Worker PDF document is not initialized.")
 
-        # Extract image data from the PDF using the xref identifier
+        # Early cancellation check
+        if _is_cancelled():
+            return _cancelled_result(task)
+
+        # Extract raw image data from PDF
         base_image = PDF_DOC.extract_image(task.xref)
 
         image_bytes = base_image.get("image")
@@ -189,11 +168,11 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
 
         ext = raw_ext.lower()
 
-        # Check again for cancellation before writing to disk
+        # Check again before performing disk I/O
         if _is_cancelled():
             return _cancelled_result(task)
 
-        # Temporary file used to ensure atomic writes
+        # Write to temp file (ensures atomic commit later)
         temp_path = os.path.join(
             task.out_dir,
             f".pdfimgextract-tmp-{task.stem}.{ext}.part",
@@ -202,16 +181,15 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
         with open(temp_path, "wb") as f:
             f.write(image_bytes)
 
-        # Remove partial file if cancellation happened during write
+        # Handle cancellation during write
         if _is_cancelled():
             remove_file_safely(temp_path)
-
             return _cancelled_result(task)
 
         return _result(task, ok=True, ext=ext, temp_path=temp_path)
 
     except Exception as e:
-        # Ensure temporary file is removed on failure
+        # Cleanup temp file on any failure
         remove_file_safely(temp_path)
 
         return _result(task, ok=False, error=str(e))

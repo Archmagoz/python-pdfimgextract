@@ -4,6 +4,8 @@ from typing import List
 
 @dataclass(slots=True, frozen=True)
 class Args:
+    """Configuration parameters for the extraction process."""
+
     pdf_path: str
     out_dir: str
     workers: int
@@ -13,6 +15,8 @@ class Args:
 
 @dataclass(slots=True, frozen=True)
 class ExtractTask:
+    """Represents a single image extraction task."""
+
     xref: int
     out_dir: str
     stem: str
@@ -20,6 +24,8 @@ class ExtractTask:
 
 @dataclass(slots=True, frozen=True)
 class ExtractResult:
+    """Result of an extraction attempt."""
+
     ok: bool
     cancelled: bool
     xref: int
@@ -31,6 +37,8 @@ class ExtractResult:
 
 @dataclass(slots=True, frozen=True)
 class ExtractionSummary:
+    """Aggregated summary of extraction results."""
+
     success: int
     failed: int
     interrupted: bool
@@ -38,6 +46,8 @@ class ExtractionSummary:
 
 @dataclass(slots=True, frozen=True)
 class PoolResult:
+    """Container for all results returned by the worker pool."""
+
     results: List[ExtractResult]
     success_count: int
     failed_count: int

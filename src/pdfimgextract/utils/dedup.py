@@ -14,7 +14,8 @@ from pdfimgextract.utils.progress_bar import (
 def _compute_stream_hash(pdf: fitz.Document, xref: int) -> bytes | None:
     """
     Compute a SHA256 hash from the raw image stream.
-    Returns None if the stream cannot be read.
+
+    Returns None if the stream cannot be accessed.
     """
 
     stream = pdf.xref_stream(xref)
@@ -24,6 +25,17 @@ def _compute_stream_hash(pdf: fitz.Document, xref: int) -> bytes | None:
 
 
 def scan_pdf_images(pdf: fitz.Document, dedup: str) -> tuple[list[int], int, int]:
+    """
+    Scan all pages and collect unique image xrefs.
+
+    Deduplication strategies:
+    - "xref": skip repeated references (fast)
+    - "hash": compare image content (slower, more accurate)
+
+    Returns:
+        (xrefs, unique_count, duplicate_count)
+    """
+
     seen_xref: set[int] = set()
     seen_hashes: set[bytes] = set()
     xrefs: list[int] = []
@@ -34,10 +46,12 @@ def scan_pdf_images(pdf: fitz.Document, dedup: str) -> tuple[list[int], int, int
 
     try:
         if dedup.lower() == "xref":
+            # Fast path: rely only on PDF xref uniqueness
             for page in pdf:
                 imgs: list[tuple] = page.get_images(full=True)
                 for img in imgs:
                     xref = img[0]
+
                     if xref not in seen_xref:
                         seen_xref.add(xref)
                         xrefs.append(xref)
@@ -49,11 +63,13 @@ def scan_pdf_images(pdf: fitz.Document, dedup: str) -> tuple[list[int], int, int
                 update_scan_stats(progress, unique_images, duplicates)
 
         elif dedup.lower() == "hash":
+            # Slower path: detect duplicates by image content
             for page in pdf:
                 imgs: list[tuple] = page.get_images(full=True)
                 for img in imgs:
                     xref = img[0]
 
+                    # Skip already processed references early
                     if xref in seen_xref:
                         duplicates += 1
                         continue
@@ -61,6 +77,7 @@ def scan_pdf_images(pdf: fitz.Document, dedup: str) -> tuple[list[int], int, int
                     seen_xref.add(xref)
                     img_hash = _compute_stream_hash(pdf, xref)
 
+                    # Skip if identical image content was already seen
                     if img_hash in seen_hashes:
                         duplicates += 1
                         continue
@@ -74,6 +91,7 @@ def scan_pdf_images(pdf: fitz.Document, dedup: str) -> tuple[list[int], int, int
                 update_scan_stats(progress, unique_images, duplicates)
 
     except KeyboardInterrupt:
+        # Ensure progress bar is properly finalized on interruption
         if progress is not None:
             with suppress(Exception):
                 finish_progress_bar(progress, cancelled=True)

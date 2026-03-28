@@ -4,7 +4,7 @@ from pdfimgextract.constants.colors import YELLOW, GREEN, ENDC
 
 def _print_failed(results):
     """
-    Print details for each failed extraction.
+    Print details for each failed (non-cancelled) extraction.
     """
     for r in results:
         if not r.ok and not r.cancelled:
@@ -13,7 +13,7 @@ def _print_failed(results):
 
 def print_summary(result: PoolResult, total: int, out_dir: str) -> ExtractionSummary:
     """
-    Print a summary of the extraction process.
+    Print a summary of the extraction process and return aggregated stats.
     """
 
     success_count = result.success_count
@@ -22,6 +22,7 @@ def print_summary(result: PoolResult, total: int, out_dir: str) -> ExtractionSum
     results = result.results
 
     if interrupted:
+        # Compute how many tasks were never processed
         remaining = total - len(results)
 
         print(f"{YELLOW}{success_count} images extracted before interruption{ENDC}")
@@ -39,7 +40,7 @@ def print_summary(result: PoolResult, total: int, out_dir: str) -> ExtractionSum
             interrupted=True,
         )
 
-    # Normal completion
+    # Normal completion path
     if success_count:
         print(f"{GREEN}{success_count} images extracted to {out_dir}{ENDC}")
 

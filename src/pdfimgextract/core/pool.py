@@ -11,10 +11,10 @@ from pdfimgextract.utils.filesystem import remove_file_safely
 
 def _handle_interrupt(progress, stop_event):
     """
-    Handle a CTRL-C interruption during pool execution.
+    Handle a CTRL+C interruption during pool execution.
 
-    Signals workers to stop via the stop_event, updates the progress bar
-    to indicate cancellation, and forcefully terminates the worker pool.
+    Sets the shared stop_event to notify all workers to halt processing.
+    If a progress bar is active, updates its state to reflect cancellation.
     """
 
     stop_event.set()
@@ -29,11 +29,14 @@ def run_pool(tasks: list, args: Args, stop_event, progress) -> PoolResult:
     """
     Execute extraction tasks using a multiprocessing pool.
 
-    This function is responsible only for:
-    - creating the worker pool
-    - dispatching tasks
-    - collecting results
-    - handling cancellation/interrupts
+    Responsibilities:
+    - Initialize the worker pool
+    - Dispatch tasks to workers
+    - Collect and process results
+    - Handle graceful interruption (CTRL+C)
+
+    This function does not perform extraction logic itself; it only
+    orchestrates execution and aggregates results.
     """
 
     pool: Pool | None = None
@@ -43,6 +46,7 @@ def run_pool(tasks: list, args: Args, stop_event, progress) -> PoolResult:
     success_count: int = 0
     failed_count: int = 0
 
+    # Create worker pool with shared initialization context
     pool = Pool(
         processes=args.workers,
         initializer=init_worker,
@@ -50,8 +54,10 @@ def run_pool(tasks: list, args: Args, stop_event, progress) -> PoolResult:
     )
 
     try:
+        # Iterate over results as they complete (unordered for performance)
         for raw_result in pool.imap_unordered(worker_extract, tasks, chunksize=1):
 
+            # If a stop signal was triggered, treat all further results as cancelled
             if stop_event.is_set():
                 if raw_result.temp_path is not None:
                     remove_file_safely(raw_result.temp_path)
@@ -66,23 +72,28 @@ def run_pool(tasks: list, args: Args, stop_event, progress) -> PoolResult:
                     error="cancelled",
                 )
             else:
+                # Finalize result (e.g., move file, validate output)
                 result, _ = finalize_result(raw_result, out_dir=args.out_dir)
 
             results.append(result)
 
+            # Update counters
             if result.ok:
                 success_count += 1
             elif not result.cancelled:
                 failed_count += 1
 
+            # Advance progress bar if present
             if progress is not None:
                 progress.update(1)
 
     except KeyboardInterrupt:
+        # Capture CTRL+C and trigger controlled shutdown
         interrupted = True
         _handle_interrupt(progress, stop_event)
 
     finally:
+        # Ensure pool is properly cleaned up
         if pool is not None:
             pool.terminate() if interrupted else pool.close()
             pool.join()

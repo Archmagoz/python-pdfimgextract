@@ -9,6 +9,9 @@ def _invalid_result(
     *,
     error: str,
 ) -> tuple[ExtractResult, str | None]:
+    """
+    Build a standardized failed result, preserving original metadata.
+    """
     return (
         ExtractResult(
             ok=False,
@@ -24,6 +27,9 @@ def _invalid_result(
 
 
 def _success_result(result: ExtractResult) -> tuple[ExtractResult, str | None]:
+    """
+    Build a standardized successful result after finalization.
+    """
     return (
         ExtractResult(
             ok=True,
@@ -43,21 +49,23 @@ def finalize_result(
     out_dir: str,
 ) -> tuple[ExtractResult, str | None]:
     """
-    Finalize an extraction result by committing the temporary file.
+    Finalize an extraction result by validating and committing the temp file.
+
+    Returns the normalized result and the final file path (if successful).
     """
 
-    # If the worker already reported failure or cancellation, propagate it
+    # Propagate early if worker already failed or was cancelled
     if not result.ok:
         return result, None
 
-    # Validate worker output
+    # Ensure worker produced a temporary file
     if result.temp_path is None:
         return _invalid_result(
             result,
             error="Invalid worker result: missing temp_path",
         )
 
-    # Extension must exist to build the final filename
+    # Extension is required to construct the final filename
     if not result.ext:
         remove_file_safely(result.temp_path)
         return _invalid_result(
@@ -65,20 +73,21 @@ def finalize_result(
             error="Invalid worker result: missing extension",
         )
 
-    # Build final output path
+    # Build destination path
     final_path = os.path.join(out_dir, f"{result.stem}.{result.ext}")
 
     try:
-        # Atomic rename ensures the file appears only when fully written
+        # Atomic rename: guarantees visibility only after full write
         os.replace(result.temp_path, final_path)
     except OSError as e:
+        # Cleanup temp file on failure
         remove_file_safely(result.temp_path)
         return _invalid_result(
             result,
             error=str(e),
         )
 
-    # Return a clean finalized result
+    # Return normalized success result
     success_result, _ = _success_result(result)
 
     return success_result, final_path
