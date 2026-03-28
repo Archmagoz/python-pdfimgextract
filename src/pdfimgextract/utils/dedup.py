@@ -41,8 +41,9 @@ def scan_pdf_images(pdf: fitz.Document, dedup: str) -> tuple[list[int], int, int
     xrefs: list[int] = []
     unique_images: int = 0
     duplicates: int = 0
+    total: int = len(pdf)
 
-    progress = create_progress_bar(total=len(pdf), desc="Scanning PDF", unit="page")
+    progress = create_progress_bar(total, desc="Scanning PDF", unit="page")
 
     try:
         if dedup.lower() == "xref":

@@ -4,7 +4,7 @@ from tqdm import tqdm
 def create_progress_bar(
     total: int | None = None,
     desc: str = "Processing",
-    unit: str = "item",
+    unit: str = "Item",
 ) -> tqdm:
     """
     Create a standardized tqdm progress bar.

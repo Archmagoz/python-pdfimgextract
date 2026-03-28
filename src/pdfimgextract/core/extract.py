@@ -45,11 +45,7 @@ def extract_images_parallel(args: Args) -> int:
             return EXIT_SUCCESS
 
         # Initialize progress bar only after confirming work exists
-        progress = create_progress_bar(
-            total=total,
-            desc="Extracting images",
-            unit="img",
-        )
+        progress = create_progress_bar(total, desc="Extracting images", unit="img")
 
         # Ensure output directory exists before starting workers
         os.makedirs(args.out_dir, exist_ok=True)
