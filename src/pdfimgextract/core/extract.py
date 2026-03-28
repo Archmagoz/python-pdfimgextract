@@ -12,8 +12,8 @@ from pdfimgextract.core.pool import run_pool
 from pdfimgextract.utils.progress_bar import create_progress_bar, finish_progress_bar
 from pdfimgextract.utils.filesystem import cleanup_stale_temp_files
 from pdfimgextract.utils.summary import print_summary
-from pdfimgextract.constants.exit_codes import EXIT_SUCCESS, EXIT_FAILURE, EXIT_BY_USER
 from pdfimgextract.constants.colors import RED, YELLOW, ENDC
+from pdfimgextract.constants.exit_codes import EXIT_SUCCESS, EXIT_FAILURE, EXIT_BY_USER
 
 
 def extract_images_parallel(args: Args) -> int:
