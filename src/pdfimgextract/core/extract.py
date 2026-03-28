@@ -6,7 +6,7 @@ from tqdm import tqdm
 import os
 import sys
 
-from pdfimgextract.core.build_tasks import build_tasks
+from pdfimgextract.core.tasks import build_tasks
 from pdfimgextract.core.pool import run_pool
 from pdfimgextract.models.datamodels import Args, PoolResult
 from pdfimgextract.utils.progress_bar import create_progress_bar, finish_progress_bar
