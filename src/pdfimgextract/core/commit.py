@@ -1,6 +1,6 @@
 import os
 
-from pdfimgextract.models.datamodels import ExtractResult
+from pdfimgextract.models.types import ExtractResult
 from pdfimgextract.utils.filesystem import remove_file_safely
 
 

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Protocol
 
 
 @dataclass(slots=True, frozen=True)
@@ -48,7 +48,16 @@ class ExtractionSummary:
 class PoolResult:
     """Container for all results returned by the worker pool."""
 
-    results: List[ExtractResult]
+    results: list[ExtractResult]
     success_count: int
     failed_count: int
     interrupted: bool
+
+
+class SharedEventProtocol(Protocol):
+    """
+    Minimal interface for a shared stop event.
+    """
+
+    def is_set(self) -> bool: ...
+    def set(self) -> None: ...

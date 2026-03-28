@@ -11,10 +11,9 @@ import atexit
 import os
 import signal
 
-from typing import Protocol
 from contextlib import suppress
 
-from pdfimgextract.models.datamodels import ExtractTask, ExtractResult
+from pdfimgextract.models.types import ExtractTask, ExtractResult, SharedEventProtocol
 from pdfimgextract.utils.filesystem import remove_file_safely
 
 
@@ -57,17 +56,6 @@ def _cancelled_result(task: ExtractTask) -> ExtractResult:
 # ============================================================
 # Worker global state
 # ============================================================
-
-
-class SharedEventProtocol(Protocol):
-    """
-    Minimal interface for a shared stop event.
-
-    Allows decoupling from multiprocessing.Event implementation.
-    """
-
-    def is_set(self) -> bool: ...
-    def set(self) -> None: ...
 
 
 # Per-process state (initialized once per worker)

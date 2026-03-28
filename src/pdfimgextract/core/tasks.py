@@ -1,6 +1,6 @@
 import fitz
 
-from pdfimgextract.models.datamodels import ExtractTask, Args
+from pdfimgextract.models.types import ExtractTask, Args
 from pdfimgextract.utils.filesystem import load_existing_stems
 from pdfimgextract.utils.dedup import scan_pdf_images
 from pdfimgextract.constants.colors import ENDC, YELLOW

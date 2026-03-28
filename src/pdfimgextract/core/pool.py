@@ -1,15 +1,22 @@
 from __future__ import annotations
 
 from multiprocessing.pool import Pool
+from tqdm import tqdm
+
+from pdfimgextract.models.types import (
+    Args,
+    ExtractResult,
+    ExtractTask,
+    PoolResult,
+    SharedEventProtocol,
+)
 
 from pdfimgextract.core.worker import init_worker, worker_extract
 from pdfimgextract.core.commit import finalize_result
-from pdfimgextract.models.datamodels import Args, ExtractResult
-from pdfimgextract.models.datamodels import PoolResult
 from pdfimgextract.utils.filesystem import remove_file_safely
 
 
-def _handle_interrupt(progress, stop_event):
+def _handle_interrupt(progress: tqdm | None, stop_event: SharedEventProtocol) -> None:
     """
     Handle a CTRL+C interruption during pool execution.
 
@@ -25,7 +32,12 @@ def _handle_interrupt(progress, stop_event):
         progress.refresh()
 
 
-def run_pool(tasks: list, args: Args, stop_event, progress) -> PoolResult:
+def run_pool(
+    tasks: list[ExtractTask],
+    args: Args,
+    stop_event: SharedEventProtocol,
+    progress: tqdm | None,
+) -> PoolResult:
     """
     Execute extraction tasks using a multiprocessing pool.
 

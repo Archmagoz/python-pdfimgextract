@@ -6,9 +6,9 @@ from tqdm import tqdm
 import os
 import sys
 
+from pdfimgextract.models.types import Args, PoolResult, SharedEventProtocol
 from pdfimgextract.core.tasks import build_tasks
 from pdfimgextract.core.pool import run_pool
-from pdfimgextract.models.datamodels import Args, PoolResult
 from pdfimgextract.utils.progress_bar import create_progress_bar, finish_progress_bar
 from pdfimgextract.utils.filesystem import cleanup_stale_temp_files
 from pdfimgextract.utils.summary import print_summary
@@ -34,8 +34,7 @@ def extract_images_parallel(args: Args) -> int:
 
     progress: tqdm | None = None
     results: PoolResult | None = None
-    interrupted: bool = False
-    stop_event = Event()
+    stop_event: SharedEventProtocol = Event()
 
     try:
         # Build extraction tasks (one per image)
@@ -59,7 +58,6 @@ def extract_images_parallel(args: Args) -> int:
         results = run_pool(tasks, args, stop_event, progress)
 
     except KeyboardInterrupt:
-        interrupted = True
         stop_event.set()
 
         print(f"{YELLOW}Extraction interrupted by user{ENDC}", file=sys.stderr)
@@ -76,7 +74,8 @@ def extract_images_parallel(args: Args) -> int:
         # Always finalize progress bar safely
         if progress is not None:
             with suppress(Exception):
-                finish_progress_bar(progress, interrupted)
+                is_interrupted = results.interrupted if results else False
+                finish_progress_bar(progress, is_interrupted)
 
         # Cleanup any temporary files left behind
         cleanup_stale_temp_files(args.out_dir)
