@@ -26,11 +26,9 @@ def _compute_stream_hash(pdf: fitz.Document, xref: int) -> bytes | None:
 def scan_pdf_images(pdf: fitz.Document, dedup: str) -> tuple[list[int], int, int]:
     seen_xref: set[int] = set()
     seen_hashes: set[bytes] = set()
-
     xrefs: list[int] = []
-
-    unique_images = 0
-    duplicates = 0
+    unique_images: int = 0
+    duplicates: int = 0
 
     progress = create_progress_bar(total=len(pdf), desc="Scanning PDF", unit="page")
 
@@ -83,4 +81,5 @@ def scan_pdf_images(pdf: fitz.Document, dedup: str) -> tuple[list[int], int, int
 
     scanning_complete(progress)
     progress.close()
+
     return xrefs, unique_images, duplicates

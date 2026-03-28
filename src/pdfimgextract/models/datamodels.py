@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import List
 
 
 @dataclass(slots=True, frozen=True)
@@ -15,7 +16,6 @@ class ExtractTask:
     xref: int
     out_dir: str
     stem: str
-    run_id: str
 
 
 @dataclass(slots=True, frozen=True)
@@ -33,4 +33,12 @@ class ExtractResult:
 class ExtractionSummary:
     success: int
     failed: int
+    interrupted: bool
+
+
+@dataclass(slots=True, frozen=True)
+class PoolResult:
+    results: List[ExtractResult]
+    success_count: int
+    failed_count: int
     interrupted: bool

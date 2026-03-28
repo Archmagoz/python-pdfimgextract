@@ -196,7 +196,7 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
         # Temporary file used to ensure atomic writes
         temp_path = os.path.join(
             task.out_dir,
-            f".pdfimgextract-tmp-{task.run_id}-{task.stem}.{ext}.part",
+            f".pdfimgextract-tmp-{task.stem}.{ext}.part",
         )
 
         with open(temp_path, "wb") as f:
@@ -205,6 +205,7 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
         # Remove partial file if cancellation happened during write
         if _is_cancelled():
             remove_file_safely(temp_path)
+
             return _cancelled_result(task)
 
         return _result(task, ok=True, ext=ext, temp_path=temp_path)
@@ -212,4 +213,5 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
     except Exception as e:
         # Ensure temporary file is removed on failure
         remove_file_safely(temp_path)
+
         return _result(task, ok=False, error=str(e))

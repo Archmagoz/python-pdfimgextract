@@ -80,4 +80,5 @@ def finalize_result(
 
     # Return a clean finalized result
     success_result, _ = _success_result(result)
+
     return success_result, final_path

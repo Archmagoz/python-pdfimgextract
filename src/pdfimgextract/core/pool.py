@@ -5,10 +5,11 @@ from multiprocessing.pool import Pool
 from pdfimgextract.core.worker import init_worker, worker_extract
 from pdfimgextract.core.commit import finalize_result
 from pdfimgextract.models.datamodels import Args, ExtractResult
+from pdfimgextract.models.datamodels import PoolResult
 from pdfimgextract.utils.filesystem import remove_file_safely
 
 
-def _handle_interrupt(pool, progress, stop_event):
+def _handle_interrupt(progress, stop_event):
     """
     Handle a CTRL-C interruption during pool execution.
 
@@ -23,12 +24,8 @@ def _handle_interrupt(pool, progress, stop_event):
         progress.colour = "yellow"
         progress.refresh()
 
-    if pool is not None:
-        pool.terminate()
-        pool.join()
 
-
-def run_pool(tasks: list, args: Args, stop_event, progress):
+def run_pool(tasks: list, args: Args, stop_event, progress) -> PoolResult:
     """
     Execute extraction tasks using a multiprocessing pool.
 
@@ -40,14 +37,12 @@ def run_pool(tasks: list, args: Args, stop_event, progress):
     """
 
     pool: Pool | None = None
-    interrupted = False
+    interrupted: bool = False
 
-    # Aggregated execution results
     results: list[ExtractResult] = []
-    failed: list[ExtractResult] = []
-    success_count = 0
+    success_count: int = 0
+    failed_count: int = 0
 
-    # Create worker pool with per-process PDF initialization
     pool = Pool(
         processes=args.workers,
         initializer=init_worker,
@@ -55,10 +50,8 @@ def run_pool(tasks: list, args: Args, stop_event, progress):
     )
 
     try:
-        # Process results as workers finish tasks (unordered)
         for raw_result in pool.imap_unordered(worker_extract, tasks, chunksize=1):
 
-            # If cancellation was requested, discard temporary output
             if stop_event.is_set():
                 if raw_result.temp_path is not None:
                     remove_file_safely(raw_result.temp_path)
@@ -73,25 +66,30 @@ def run_pool(tasks: list, args: Args, stop_event, progress):
                     error="cancelled",
                 )
             else:
-                # Finalize the worker result (move temp file, validate, etc.)
                 result, _ = finalize_result(raw_result, out_dir=args.out_dir)
 
             results.append(result)
 
-            # Track statistics
             if result.ok:
                 success_count += 1
             elif not result.cancelled:
-                failed.append(result)
+                failed_count += 1
 
-            progress.update(1)
-
-        # Graceful shutdown
-        pool.close()
-        pool.join()
+            if progress is not None:
+                progress.update(1)
 
     except KeyboardInterrupt:
         interrupted = True
-        _handle_interrupt(pool, progress, stop_event)
+        _handle_interrupt(progress, stop_event)
 
-    return results, failed, success_count, interrupted
+    finally:
+        if pool is not None:
+            pool.terminate() if interrupted else pool.close()
+            pool.join()
+
+    return PoolResult(
+        results=results,
+        success_count=success_count,
+        failed_count=failed_count,
+        interrupted=interrupted,
+    )
