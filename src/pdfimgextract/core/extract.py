@@ -34,7 +34,7 @@ def extract_images_parallel(args: Args) -> int:
 
     progress: tqdm | None = None
     results: PoolResult | None = None
-    interrupted = False
+    interrupted: bool = False
     stop_event = Event()
 
     try:
