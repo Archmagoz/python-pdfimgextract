@@ -24,7 +24,7 @@ def _compute_stream_hash(pdf: fitz.Document, xref: int) -> bytes | None:
     return hashlib.sha256(stream).digest()
 
 
-def scan_pdf_images(pdf: fitz.Document, dedup: str) -> tuple[list[int], int, int]:
+def scan_pdf_images(pdf: fitz.Document, dedup: str) -> list[int]:
     """
     Scan all pages and collect unique image xrefs.
 
@@ -33,7 +33,7 @@ def scan_pdf_images(pdf: fitz.Document, dedup: str) -> tuple[list[int], int, int
     - "hash": compare image content (slower, more accurate)
 
     Returns:
-        (xrefs, unique_count, duplicate_count)
+        xrefs list
     """
 
     seen_xref: set[int] = set()
@@ -101,4 +101,4 @@ def scan_pdf_images(pdf: fitz.Document, dedup: str) -> tuple[list[int], int, int
     scanning_complete(progress)
     progress.close()
 
-    return xrefs, unique_images, duplicates
+    return xrefs

@@ -51,6 +51,6 @@ def build_tasks(args: Args) -> list[ExtractTask]:
 
     # Extract unique image references according to the selected dedup strategy
     with fitz.open(args.pdf_path) as pdf:
-        xrefs, _, _ = scan_pdf_images(pdf, args.dedup)
+        xrefs = scan_pdf_images(pdf, args.dedup)
 
     return _build_extract_tasks(xrefs=xrefs, args=args)

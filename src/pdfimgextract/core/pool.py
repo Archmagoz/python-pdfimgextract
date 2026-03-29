@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from multiprocessing.pool import Pool
+from dataclasses import replace
 from tqdm import tqdm
 
 from pdfimgextract.models.types import (
@@ -74,18 +75,16 @@ def run_pool(
                 if raw_result.temp_path is not None:
                     remove_file_safely(raw_result.temp_path)
 
-                result = ExtractResult(
+                result = replace(
+                    raw_result,
                     ok=False,
                     cancelled=True,
-                    xref=raw_result.xref,
-                    stem=raw_result.stem,
-                    ext=raw_result.ext,
                     temp_path=None,
                     error="cancelled",
                 )
             else:
                 # Finalize result (e.g., move file, validate output)
-                result, _ = finalize_result(raw_result, out_dir=args.out_dir)
+                result = finalize_result(raw_result, out_dir=args.out_dir)
 
             results.append(result)
 

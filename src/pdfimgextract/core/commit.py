@@ -1,62 +1,35 @@
 import os
 
+from dataclasses import replace
+
 from pdfimgextract.models.types import ExtractResult
 from pdfimgextract.utils.filesystem import remove_file_safely
 
 
-def _invalid_result(
-    result: ExtractResult,
-    *,
-    error: str,
-) -> tuple[ExtractResult, str | None]:
+def _invalid_result(result: ExtractResult, *, error: str) -> ExtractResult:
     """
     Build a standardized failed result, preserving original metadata.
     """
-    return (
-        ExtractResult(
-            ok=False,
-            cancelled=False,
-            xref=result.xref,
-            stem=result.stem,
-            ext=result.ext,
-            temp_path=None,
-            error=error,
-        ),
-        None,
-    )
+    return replace(result, ok=False, cancelled=False, temp_path=None, error=error)
 
 
-def _success_result(result: ExtractResult) -> tuple[ExtractResult, str | None]:
+def _success_result(result: ExtractResult) -> ExtractResult:
     """
     Build a standardized successful result after finalization.
     """
-    return (
-        ExtractResult(
-            ok=True,
-            cancelled=False,
-            xref=result.xref,
-            stem=result.stem,
-            ext=result.ext,
-            temp_path=None,
-            error=None,
-        ),
-        None,
-    )
+    return replace(result, ok=True, cancelled=False, temp_path=None, error=None)
 
 
-def finalize_result(
-    result: ExtractResult,
-    out_dir: str,
-) -> tuple[ExtractResult, str | None]:
+def finalize_result(result: ExtractResult, out_dir: str) -> ExtractResult:
     """
     Finalize an extraction result by validating and committing the temp file.
 
-    Returns the normalized result and the final file path (if successful).
+    Returns the normalized result (if successful).
     """
 
     # Propagate early if worker already failed or was cancelled
     if not result.ok:
-        return result, None
+        return result
 
     # Ensure worker produced a temporary file
     if result.temp_path is None:
@@ -82,12 +55,7 @@ def finalize_result(
     except OSError as e:
         # Cleanup temp file on failure
         remove_file_safely(result.temp_path)
-        return _invalid_result(
-            result,
-            error=str(e),
-        )
+        return _invalid_result(result, error=str(e))
 
     # Return normalized success result
-    success_result, _ = _success_result(result)
-
-    return success_result, final_path
+    return _success_result(result)
