@@ -118,7 +118,7 @@ A comprehensive evaluation was conducted to measure scalability and efficiency a
 
 ## 📁 Validation
 
-The benchmarking scripts and raw data are available for inspection and reproduction within the `docs/` directory of this repository.
+The benchmarking script is available for inspection and reproduction within the `docs/` directory of this repository.
 
 ---
 
