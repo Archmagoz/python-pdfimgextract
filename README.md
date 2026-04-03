@@ -1,137 +1,167 @@
-# python-pdfimgextract
+# 📄 pdfimgextract
 
-## 🚀 Overview
-
-**python-pdfimgextract** is a high-performance PDF image extraction tool designed to maximize throughput through multiprocessing.
-
-The project focuses on **speed, reliability, and efficient parallel processing**, enabling large PDFs with hundreds of high-resolution images to be processed significantly faster than traditional single-threaded approaches.
+A fast and parallelized Python tool for extracting images from PDF files with support for multiprocessing, deduplication, and high-throughput workflows.
 
 ---
 
-## ✨ Features
+## 🚀 Features
 
-| Feature | Description |
-|-------|-------------|
-| ⚡ Parallel Extraction | Utilizes multiprocessing to decode images across multiple CPU cores |
-| 🛡️ Atomic Writes | Prevents partially written files during crashes |
-| 🧹 Deduplication | Optional removal of identical images |
-| 📊 Progress Tracking | Real-time progress bar during extraction |
-| 🛑 Graceful Interrupts | Safe handling of SIGINT and termination signals |
-| 💻 Clean CLI | Simple command-line interface |
-
----
-
-## 📥 Installation
-
-```bash
-pip install pdfimgextract
-```
+- ⚡ Multiprocessing-based extraction
+- 🧵 Configurable number of worker processes
+- 🖼️ Extracts embedded images directly from PDF objects
+- 🧹 Optional deduplication of images
+- 📦 Preserves original image formats when possible
+- 📊 Optimized for high-performance batch processing
+- 🪵 Clean output structure for automation pipelines
 
 ---
 
-## 🛠️ Usage
+## 📦 Installation
 
-Basic usage:
+### Requirements
 
-```bash
-pdfimgextract INPUT_PDF OUTPUT_DIR NUMBER_OF_PROCESSES
-```
+- Python 3.10+
+- Dependencies listed in `requirements.txt`
+
+### Install
+
+git clone https://github.com/your-repo/pdfimgextract.git  
+cd pdfimgextract  
+
+pip install -r requirements.txt  
+
+---
+
+## ▶️ Usage
+
+### Basic usage
+
+python -m pdfimgextract input.pdf output_dir  
+
+### Example
+
+python -m pdfimgextract ./sample.pdf ./output  
+
+---
+
+## ⚙️ Options
+
+| Argument | Description |
+|----------|------------|
+| input.pdf | Path to the input PDF file |
+| output_dir | Directory where extracted images will be saved |
+| --workers | Number of parallel processes (optional) |
+| --overwrite | Overwrite existing files if present |
+| --dedup | Enable image deduplication |
+
+---
+
+## 🧵 Parallelism Model
+
+- The tool uses **process-based parallelism (multiprocessing)**
+- Each worker processes a portion of the PDF image extraction workload
+- Performance scales depending on:
+  - CPU core count
+  - Disk throughput
+  - Memory availability
+
+---
+
+## 📁 Output Structure
+
+Extracted images are saved in the specified output directory.
 
 Example:
 
-```bash
-pdfimgextract manga.pdf output 16
-```
+output/  
+├── image_0001.png  
+├── image_0002.jpg  
+├── image_0003.png  
 
-Optional usage (flags):
-
-```bash
-pdfimgextract -i input.pdf -o output_dir -p 8
-pdfimgextract -i input.pdf -o output_dir -d hash
-pdfimgextract -i input.pdf -o output_dir --overwrite
-```
-
-### Arguments
-
-```
--i / --input         Path to input PDF
--o / --output        Output directory
--p / --parallelism   Number of worker processes (default: 8)
--d / --dedup         Deduplication method: xref (default) or hash (precise but slower)
---overwrite          Overwrite existing files
-```
-
-If not specified, the tool defaults to:
-- **8 workers**
-- **xref deduplication**
+File naming may vary depending on extraction order and deduplication settings.
 
 ---
 
-## 📊 Performance & Benchmark
+## 📊 Benchmark
 
-### 🖥️ Test Environment
+A benchmark was conducted to evaluate scalability and performance under different process counts using the same PDF input.
 
-• **OS**: Windows 11  
-• **CPU**: 28 cores  
-• **Input File**: 491 MB PDF  
-• **Extracted Images**: 230  
-• **Image Size Range**: ~2MB – 10MB  
+### 🖥️ System Configuration
+
+- CPU: Intel64 Family 6 Model 183 Stepping 1 (20 cores / 28 threads)
+- RAM: 63.8 GB
+- OS: Windows 11 (Build 10.0.26200)
+- Disk: KINGSTON SA400S37480G (SATA SSD)
+
+---
+
+### ⚙️ Methodology
+
+- Same PDF file used across all tests
+- Identical workload for each process configuration
+- Multiple runs executed per configuration
+- Metrics aggregated:
+  - Average time
+  - Median
+  - Standard deviation
+- Process counts tested:
+  - 1, 2, 4, 8, 16, 32
+
+📌 The benchmark is fully reproducible and can be validated using the scripts and artifacts available in the `docs/` directory.
 
 ---
 
 ### 📈 Results
 
-| Proc | Time (s) | Speedup | Efficiency | RAM (MB) |
-|------|---------|--------|-----------|---------|
-| 1  | 111.88 | 1.00x | 100% | 349 |
-| 2  | 56.98  | 1.96x | 98%  | 626 |
-| 4  | 32.41  | 3.45x | 86%  | 1159 |
-| 8  | 20.16  | 5.55x | 69%  | 2254 |
-| 16 | 14.24  | 7.86x | 49%  | 4423 |
-| 32 | 11.41  | 9.81x | 31%  | 7309 |
-| 64 | 11.67  | 9.59x | 15%  | 9306 |
+| Processes | Avg (sec) | Median (sec) | Std Dev | RAM MB  | Speedup | Efficiency % | Throughput MB/s |
+|----------|-----------|--------------|---------|---------|---------|--------------|-----------------|
+| 1        | 112.92    | 112.88       | 0.17    | 355.17  | 1.00    | 100.00       | 4.35            |
+| 2        | 58.20     | 58.23        | 0.52    | 637.87  | 1.94    | 97.01        | 8.44            |
+| 4        | 33.89     | 33.55        | 0.96    | 1182.90 | 3.33    | 83.29        | 14.49           |
+| 8        | 21.80     | 21.04        | 1.17    | 2302.81 | 5.18    | 64.76        | 22.53           |
+| 16       | 15.17     | 15.15        | 0.06    | 4506.38 | 7.45    | 46.54        | 32.38           |
+| 32       | 11.73     | 11.72        | 0.07    | 7476.22 | 9.63    | 30.09        | 41.88           |
 
 ---
 
-### 🧠 Analysis
+### 🧠 Notes on Performance
 
-**Scaling**
-- Near-linear scaling up to ~4 processes  
-- Strong gains up to ~16  
-- Performance plateaus around ~32  
-
-**CPU Efficiency**
-- Very high at low parallelism (~98% at 2 workers)  
-- Gradual drop due to scheduling and contention  
-- Diminishing returns at 64 and beyond workers  
-
-**Memory Usage**
-- RAM scales almost linearly with process count  
-- Each worker holds its own decoding state  
-- Large images amplify memory consumption  
-
-Examples:
-- 8 workers → ~2.2 GB  
-- 32 workers → ~7.3 GB  
-- 64 workers → ~9.3 GB  
-
-**I/O Bottleneck**
-- Parallel writes saturate disk bandwidth  
-- Causes worker stalls at high process counts  
-- Main limiter beyond ~32 workers  
+- Near-linear scaling at low process counts
+- Diminishing returns beyond ~8–16 processes
+- Performance becomes increasingly constrained by:
+  - Disk I/O
+  - Process overhead
+  - Memory usage
+- Best efficiency observed in the 8–16 worker range
+- Maximum throughput achieved at 32 workers, with reduced efficiency
 
 ---
 
-### 🏁 Optimal Range
+## 📁 Benchmark Validation
 
-**Recommended configuration:**
+The benchmark can be inspected, executed, and validated directly from the `docs/` directory in this repository.
 
-```
-8 – 16 workers
-```
+---
 
-Best balance between:
-- Speed
-- Efficiency
-- Memory usage
-- I/O pressure
+## ⚠️ Limitations
+
+- Performance depends heavily on storage speed (SSD vs NVMe)
+- Large PDFs with many embedded images may significantly increase memory usage
+- Multiprocessing overhead may reduce efficiency at very high worker counts
+- Deduplication may introduce additional computational cost
+
+---
+
+## 📜 License
+
+MIT License (or your chosen license)
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome.
+
+- Open issues for bugs or suggestions
+- Submit pull requests with improvements
+- Keep changes consistent with the existing architecture and style
