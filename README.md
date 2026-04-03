@@ -49,7 +49,7 @@ pdfimgextract ./sample.pdf ./output_images
 |:---|:---|
 | `input.pdf` | Path to the source PDF file. |
 | `output_dir` | Destination directory for extracted assets. |
-| `--parallelism X` | Number of concurrent worker processes (defaults to CPU count). |
+| `--parallelism X` | Number of concurrent worker processes (defaults 8). |
 | `--overwrite` | Force overwrite of existing files in the output directory. |
 | `--dedup METHOD` | Enable image deduplication. Supported methods: `xref` (default) or `hash`. |
 
@@ -84,10 +84,10 @@ output/
 A comprehensive evaluation was conducted to measure scalability and efficiency across varying process counts.
 
 ### 🖥️ Test Environment
-- **CPU:** Intel Core (20 Cores / 28 Threads)
-- **RAM:** 64 GB
-- **OS:** Windows 11
-- **Storage:** Kingston SATA SSD
+- **CPU**: Intel64 Family 6 Model 183 Stepping 1, GenuineIntel (20C/28T)
+- **RAM**: 63.8 GB
+- **OS**: Windows 11 (Build 10.0.26200)
+- **Disk**: KINGSTON SA400S37480G
 
 ### 📄 Dataset Profile
 - **Input:** 491 MB PDF
