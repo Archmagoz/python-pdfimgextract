@@ -3,24 +3,24 @@ import os
 from contextlib import suppress
 
 
-def load_existing_stems(out_dir: str) -> set[str]:
+def load_existing_files(output_dir: str) -> set[str]:
     """
-    Collect file stems from the output directory.
+    Collect full filenames from the output directory.
 
     Used to skip already existing files when overwrite is disabled.
     """
 
-    stems: set[str] = set()
+    filenames: set[str] = set()
 
     # Return empty set if directory does not exist
-    if not os.path.isdir(out_dir):
-        return stems
+    if not os.path.isdir(output_dir):
+        return filenames
 
-    for name in os.listdir(out_dir):
-        stem, _ = os.path.splitext(name)
-        stems.add(stem)
+    for filename in os.listdir(output_dir):
+        if os.path.isfile(os.path.join(output_dir, filename)):
+            filenames.add(filename)
 
-    return stems
+    return filenames
 
 
 def remove_file_safely(path: str | None) -> None:

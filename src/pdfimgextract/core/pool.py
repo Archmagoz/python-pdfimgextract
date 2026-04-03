@@ -14,6 +14,7 @@ from pdfimgextract.models.types import (
 
 from pdfimgextract.core.worker import init_worker, worker_extract
 from pdfimgextract.core.commit import finalize_result
+from pdfimgextract.utils.progress_bar import update_extract_stats
 from pdfimgextract.utils.filesystem import remove_file_safely
 
 
@@ -96,7 +97,7 @@ def run_pool(
 
             # Advance progress bar if present
             if progress is not None:
-                progress.update(1)
+                update_extract_stats(progress, success_count, failed_count)
 
     except KeyboardInterrupt:
         # Capture CTRL+C and trigger controlled shutdown

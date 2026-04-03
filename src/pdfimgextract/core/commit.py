@@ -23,8 +23,6 @@ def _success_result(result: ExtractResult) -> ExtractResult:
 def finalize_result(result: ExtractResult, out_dir: str) -> ExtractResult:
     """
     Finalize an extraction result by validating and committing the temp file.
-
-    Returns the normalized result (if successful).
     """
 
     # Propagate early if worker already failed or was cancelled
@@ -38,24 +36,24 @@ def finalize_result(result: ExtractResult, out_dir: str) -> ExtractResult:
             error="Invalid worker result: missing temp_path",
         )
 
-    # Extension is required to construct the final filename
-    if not result.ext:
+    # Filename is required to build final path
+    if not result.filename:
         remove_file_safely(result.temp_path)
         return _invalid_result(
             result,
-            error="Invalid worker result: missing extension",
+            error="Invalid worker result: missing filename",
         )
 
-    # Build destination path
-    final_path = os.path.join(out_dir, f"{result.stem}.{result.ext}")
+    # Ensure filename does not contain directories (safety)
+    filename: str = os.path.basename(result.filename)
+    final_path: str = os.path.join(out_dir, filename)
 
     try:
-        # Atomic rename: guarantees visibility only after full write
+        # Atomic move: only visible when fully written
         os.replace(result.temp_path, final_path)
     except OSError as e:
         # Cleanup temp file on failure
         remove_file_safely(result.temp_path)
         return _invalid_result(result, error=str(e))
 
-    # Return normalized success result
     return _success_result(result)

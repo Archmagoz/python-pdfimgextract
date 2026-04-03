@@ -39,8 +39,7 @@ def _result(
         ok=ok,
         cancelled=cancelled,
         xref=task.xref,
-        stem=task.stem,
-        ext=ext,
+        filename=task.filename,
         temp_path=temp_path,
         error=error,
     )
@@ -146,15 +145,9 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
         base_image = PDF_DOC.extract_image(task.xref)
 
         image_bytes = base_image.get("image")
-        raw_ext = str(base_image.get("ext", "")).strip()
 
         if not image_bytes:
             raise RuntimeError("PDF image extraction returned empty image data.")
-
-        if not raw_ext:
-            raise RuntimeError("PDF image extraction returned empty file extension.")
-
-        ext = raw_ext.lower()
 
         # Check again before performing disk I/O
         if _is_cancelled():
@@ -163,7 +156,7 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
         # Write to temp file (ensures atomic commit later)
         temp_path = os.path.join(
             task.out_dir,
-            f".pdfimgextract-tmp-{task.stem}.{ext}.part",
+            f".pdfimgextract-tmp-{task.filename}.part",
         )
 
         with open(temp_path, "wb") as f:
@@ -174,7 +167,7 @@ def worker_extract(task: ExtractTask) -> ExtractResult:
             remove_file_safely(temp_path)
             return _cancelled_result(task)
 
-        return _result(task, ok=True, ext=ext, temp_path=temp_path)
+        return _result(task, ok=True, temp_path=temp_path)
 
     except Exception as e:
         # Cleanup temp file on any failure

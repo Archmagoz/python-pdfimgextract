@@ -28,6 +28,8 @@ def update_scan_stats(progress: tqdm, unique: int, duplicates: int) -> None:
     Update scan statistics (unique images vs duplicates).
     """
 
+    progress.update(1)
+
     progress.set_postfix(
         unique=unique,
         dup=duplicates,
@@ -38,6 +40,8 @@ def update_extract_stats(progress: tqdm, success: int, failed: int) -> None:
     """
     Update extraction statistics (success vs failure).
     """
+
+    progress.update(1)
 
     progress.set_postfix(
         ok=success,

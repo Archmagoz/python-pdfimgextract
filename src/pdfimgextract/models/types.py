@@ -19,7 +19,7 @@ class ExtractTask:
 
     xref: int
     out_dir: str
-    stem: str
+    filename: str
 
 
 @dataclass(slots=True, frozen=True)
@@ -29,8 +29,7 @@ class ExtractResult:
     ok: bool
     cancelled: bool
     xref: int
-    stem: str
-    ext: str | None
+    filename: str
     temp_path: str | None
     error: str | None
 
