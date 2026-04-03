@@ -21,14 +21,12 @@ A fast and parallelized Python tool for extracting images from PDF files with su
 ### Requirements
 
 - Python 3.10+
-- Dependencies listed in `requirements.txt`
 
 ### Install
 
-git clone https://github.com/your-repo/pdfimgextract.git  
-cd pdfimgextract  
-
-pip install -r requirements.txt  
+```bash
+pip install pdfimgextract
+```
 
 ---
 
@@ -36,11 +34,15 @@ pip install -r requirements.txt
 
 ### Basic usage
 
-python -m pdfimgextract input.pdf output_dir  
+```bash
+pdfimgextract input.pdf output_dir  
+```
 
 ### Example
 
-python -m pdfimgextract ./sample.pdf ./output  
+```bash
+pdfimgextract ./sample.pdf ./output  
+```
 
 ---
 
@@ -74,11 +76,10 @@ Extracted images are saved in the specified output directory.
 Example:
 
 output/  
-├── image_0001.png  
-├── image_0002.jpg  
-├── image_0003.png  
+├── 0001.png  
+├── 0002.jpg  
+├── 0003.png  
 
-File naming may vary depending on extraction order and deduplication settings.
 
 ---
 
