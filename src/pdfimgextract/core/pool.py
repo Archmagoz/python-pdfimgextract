@@ -60,14 +60,14 @@ def run_pool(
     success_count: int = 0
     failed_count: int = 0
 
-    # Create worker pool with shared initialization context
-    pool = Pool(
-        processes=args.workers,
-        initializer=init_worker,
-        initargs=(args.pdf_path, stop_event),
-    )
-
     try:
+        # Create worker pool with shared initialization context
+        pool = Pool(
+            processes=args.workers,
+            initializer=init_worker,
+            initargs=(args.pdf_path, stop_event),
+        )
+
         # Iterate over results as they complete (unordered for performance)
         for raw_result in pool.imap_unordered(worker_extract, tasks, chunksize=1):
 

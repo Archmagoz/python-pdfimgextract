@@ -16,6 +16,15 @@ from contextlib import suppress
 from pdfimgextract.models.types import ExtractTask, ExtractResult, SharedEventProtocol
 from pdfimgextract.utils.filesystem import remove_file_safely
 
+# ============================================================
+# Worker global state
+# ============================================================
+
+
+# Per-process state (initialized once per worker)
+PDF_DOC: fitz.Document | None = None
+STOP_EVENT: SharedEventProtocol | None = None
+
 
 # ============================================================
 # Result helpers
@@ -27,7 +36,6 @@ def _result(
     *,
     ok: bool,
     cancelled: bool = False,
-    ext: str | None = None,
     temp_path: str | None = None,
     error: str | None = None,
 ) -> ExtractResult:
@@ -50,40 +58,6 @@ def _cancelled_result(task: ExtractTask) -> ExtractResult:
     Shortcut for a cancelled task result.
     """
     return _result(task, ok=False, cancelled=True, error="cancelled")
-
-
-# ============================================================
-# Worker global state
-# ============================================================
-
-
-# Per-process state (initialized once per worker)
-PDF_DOC: fitz.Document | None = None
-STOP_EVENT: SharedEventProtocol | None = None
-
-
-# ============================================================
-# Utils
-# ============================================================
-
-
-def _close_worker_pdf() -> None:
-    """
-    Close the worker's PDF document on process exit.
-    """
-
-    global PDF_DOC
-    if PDF_DOC is not None:
-        with suppress(Exception):
-            PDF_DOC.close()
-        PDF_DOC = None
-
-
-def _is_cancelled() -> bool:
-    """
-    Check whether a global cancellation signal was triggered.
-    """
-    return STOP_EVENT is not None and STOP_EVENT.is_set()
 
 
 # ============================================================
@@ -111,6 +85,30 @@ def init_worker(pdf_path: str, stop_event: SharedEventProtocol) -> None:
 
     # Ensure cleanup on process exit
     atexit.register(_close_worker_pdf)
+
+
+# ============================================================
+# Utils
+# ============================================================
+
+
+def _close_worker_pdf() -> None:
+    """
+    Close the worker's PDF document on process exit.
+    """
+
+    global PDF_DOC
+    if PDF_DOC is not None:
+        with suppress(Exception):
+            PDF_DOC.close()
+        PDF_DOC = None
+
+
+def _is_cancelled() -> bool:
+    """
+    Check whether a global cancellation signal was triggered.
+    """
+    return STOP_EVENT is not None and STOP_EVENT.is_set()
 
 
 # ============================================================
