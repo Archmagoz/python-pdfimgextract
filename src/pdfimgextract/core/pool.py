@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from multiprocessing.pool import Pool
 from dataclasses import replace
 from tqdm import tqdm
