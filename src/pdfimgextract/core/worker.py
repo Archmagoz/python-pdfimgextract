@@ -61,6 +61,30 @@ def _cancelled_result(task: ExtractTask) -> ExtractResult:
 
 
 # ============================================================
+# Utils
+# ============================================================
+
+
+def _close_worker_pdf() -> None:
+    """
+    Close the worker's PDF document on process exit.
+    """
+
+    global PDF_DOC
+    if PDF_DOC is not None:
+        with suppress(Exception):
+            PDF_DOC.close()
+        PDF_DOC = None
+
+
+def _is_cancelled() -> bool:
+    """
+    Check whether a global cancellation signal was triggered.
+    """
+    return STOP_EVENT is not None and STOP_EVENT.is_set()
+
+
+# ============================================================
 # Worker lifecycle
 # ============================================================
 
@@ -85,30 +109,6 @@ def init_worker(pdf_path: str, stop_event: SharedEventProtocol) -> None:
 
     # Ensure cleanup on process exit
     atexit.register(_close_worker_pdf)
-
-
-# ============================================================
-# Utils
-# ============================================================
-
-
-def _close_worker_pdf() -> None:
-    """
-    Close the worker's PDF document on process exit.
-    """
-
-    global PDF_DOC
-    if PDF_DOC is not None:
-        with suppress(Exception):
-            PDF_DOC.close()
-        PDF_DOC = None
-
-
-def _is_cancelled() -> bool:
-    """
-    Check whether a global cancellation signal was triggered.
-    """
-    return STOP_EVENT is not None and STOP_EVENT.is_set()
 
 
 # ============================================================
