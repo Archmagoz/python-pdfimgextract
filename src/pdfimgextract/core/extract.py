@@ -55,15 +55,11 @@ def extract_images_parallel(args: Args) -> int:
 
     except KeyboardInterrupt:
         stop_event.set()
-
         print(f"{YELLOW}Extraction interrupted by user{ENDC}", file=sys.stderr)
         return EXIT_BY_USER
 
     except Exception as e:
-        print(
-            f"{RED}Fatal error: {type(e).__name__}: {e}{ENDC}",
-            file=sys.stderr,
-        )
+        print(f"{RED}Fatal error: {type(e).__name__}: {e}{ENDC}", file=sys.stderr)
         return EXIT_FAILURE
 
     finally:
