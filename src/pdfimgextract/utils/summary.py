@@ -8,7 +8,7 @@ def _print_failed(results):
     """
     for r in results:
         if not r.ok and not r.cancelled:
-            print(f"{YELLOW}- image #{r.stem} (xref={r.xref}): {r.error}{ENDC}")
+            print(f"{YELLOW}- image #{r.filename} (xref={r.xref}): {r.error}{ENDC}")
 
 
 def print_summary(result: PoolResult, total: int, out_dir: str) -> ExtractionSummary:
