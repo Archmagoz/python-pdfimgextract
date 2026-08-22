@@ -61,8 +61,8 @@ The tool implements a **process-based parallelism** model to bypass Python's Glo
 - Each worker process independently accesses the PDF to extract image streams.
 - **Performance Scaling** is determined by:
     - CPU core availability and clock speed.
-    - Disk I/O throughput (SATA vs. NVMe).
     - Available System RAM.
+    - Disk I/O throughput (SATA vs. NVMe).
 
 ---
 
@@ -110,7 +110,7 @@ A comprehensive evaluation was conducted to measure scalability and efficiency a
 
 ### 🧠 Performance Insights
 - **Linear Scaling:** Observed primarily at lower process counts (1–4 workers).
-- **Diminishing Returns:** Gains begin to plateau beyond 16 processes as the bottleneck shifts from CPU to **Disk I/O** and **Process Management Overhead**.
+- **Diminishing Returns:** Gains begin to plateau beyond 16 processes as the bottleneck shifts from parallel efficiency to **CPU saturation** and, secondarily, **memory pressure**.
 - **Sweet Spot:** Optimal efficiency/resource balance is typically found between **8 and 16 workers** for this hardware configuration.
 - **Maximum Throughput:** Peak data processing occurs at 32 workers, albeit at the cost of significantly higher memory consumption and lower per-core efficiency.
 
@@ -123,7 +123,7 @@ The benchmarking script is available for inspection and reproduction within the 
 ---
 
 ## ⚠️ Limitations
-- **Hardware Bound:** Overall speed is heavily contingent on storage latency (NVMe recommended for peak performance).
+- **Hardware Bound:** Overall speed is heavily contingent on CPU core count and clock speed, with memory availability as a secondary constraint at higher worker counts.
 - **Memory Footprint:** High process counts with large PDFs can lead to substantial RAM usage.
 - **Deduplication Overhead:** Enabling `hash`-based deduplication adds a computational layer that may slightly increase processing time.
 
